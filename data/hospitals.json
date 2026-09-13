@@ -1,0 +1,170 @@
+[
+    {
+        "id": "H01",
+        "name": "Hospital Universitario Fundación Santa Fe de Bogotá",
+        "latitude": 4.69617701,
+        "longitude": -74.03293464
+    },
+    {
+        "id": "H02",
+        "name": "Hospital Universitario Clínica San Rafael",
+        "latitude": 4.576605361,
+        "longitude": -74.09108594
+    },
+    {
+        "id": "H03",
+        "name": "Fundación Hospital de La Misericordia",
+        "latitude": 4.593419751,
+        "longitude": -74.08780586
+    },
+    {
+        "id": "H04",
+        "name": "Sociedad de Cirugía de Bogotá - Hospital de San José",
+        "latitude": 4.603998294,
+        "longitude": -74.08589037
+    },
+    {
+        "id": "H05",
+        "name": "Fundación Cardio Infantil Instituto de Cardiología",
+        "latitude": 4.741266998,
+        "longitude": -74.03440547
+    },
+    {
+        "id": "H06",
+        "name": "Empresa Social Del Estado Hospital Universitario de La Samaritana",
+        "latitude": 4.587020264,
+        "longitude": -74.08339977
+    },
+    {
+        "id": "H07",
+        "name": "Hospital Universitario San Ignacio",
+        "latitude": 4.628036689,
+        "longitude": -74.06510137
+    },
+    {
+        "id": "H08",
+        "name": "Fundación Hospital Infantil Universitario de San Jose",
+        "latitude": 4.66538182,
+        "longitude": -74.07794126
+    },
+    {
+        "id": "H09",
+        "name": "Hospital Militar Central",
+        "latitude": 4.635693763,
+        "longitude": -74.06226045
+    },
+    {
+        "id": "H10",
+        "name": "Hospital Universitario Mayor-Mederi",
+        "latitude": 4.623553488,
+        "longitude": -74.08189483
+    },
+    {
+        "id": "H11",
+        "name": "Hospital Universitario Barrios Unidos-Mederi",
+        "latitude": 4.664007206,
+        "longitude": -74.07970261
+    },
+    {
+        "id": "H12",
+        "name": "Unidad de Servicios de Salud Santa Clara Hospital Universitario",
+        "latitude": 4.591033227,
+        "longitude": -74.09191172
+    },
+    {
+        "id": "H13",
+        "name": "Hospital San Blas",
+        "latitude": 4.570145323,
+        "longitude": -74.08373114
+    },
+    {
+        "id": "H14",
+        "name": "Hospital Jorge Eliecer Gaitan",
+        "latitude": 4.587542336,
+        "longitude": -74.06670643
+    },
+    {
+        "id": "H15",
+        "name": "Hospital La Victoria - SCO",
+        "latitude": 4.552173581,
+        "longitude": -74.09436651
+    },
+    {
+        "id": "H16",
+        "name": "Hospital Simón Bolívar",
+        "latitude": 4.741159573,
+        "longitude": -74.02257713
+    },
+    {
+        "id": "H17",
+        "name": "Unidad de Servicios de Salud Hospital Engativá Calle 80",
+        "latitude": 4.711372841,
+        "longitude": -74.10989743
+    },
+    {
+        "id": "H18",
+        "name": "Centro Emaús Hospital Engativá",
+        "latitude": 4.715129121,
+        "longitude": -74.14116905
+    },
+    {
+        "id": "H19",
+        "name": "Hospital de Suba",
+        "latitude": 4.753562743,
+        "longitude": -74.09226791
+    },
+    {
+        "id": "H20",
+        "name": "Hospital Chapinero",
+        "latitude": 4.653765669,
+        "longitude": -74.06541136
+    },
+    {
+        "id": "H21",
+        "name": "Hospital El Tunal",
+        "latitude": 4.582016623,
+        "longitude": -74.13078571
+    },
+    {
+        "id": "H22",
+        "name": "Unidad de Servicios de Salud Hospital Meissen",
+        "latitude": 4.559662316,
+        "longitude": -74.13874453
+    },
+    {
+        "id": "H23",
+        "name": "Hospital Vista Hermosa",
+        "latitude": 4.552675071,
+        "longitude": -74.14444835
+    },
+    {
+        "id": "H24",
+        "name": "Hospital de Usme",
+        "latitude": 4.489229593,
+        "longitude": -74.10977084
+    },
+    {
+        "id": "H25",
+        "name": "Hospital Occidente de Kennedy",
+        "latitude": 4.616779903,
+        "longitude": -74.15383281
+    },
+    {
+        "id": "H26",
+        "name": "Hospital Pediátrico Tintal",
+        "latitude": 4.651066045,
+        "longitude": -74.14879759
+    },
+    {
+        "id": "H27",
+        "name": "Hospital Fontibón",
+        "latitude": 4.67165411,
+        "longitude": -74.14598632
+    },
+    {
+        "id": "H28",
+        "name": "Hospital de Bosa",
+        "latitude": 4.635412455,
+        "longitude": -74.20589586
+    }
+]
