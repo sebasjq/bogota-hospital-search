@@ -1,0 +1,609 @@
+/* ─────────────────────────────────────────────
+   ESTILOS — Rutas hospitalarias · Bogotá
+   Diseño: Apple dark-mode + Liquid Glass
+   ───────────────────────────────────────────── */
+
+/* ── Reset ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { min-width: 320px; min-height: 100%; }
+h1, h2, h3, p { margin: 0; }
+
+body {
+	margin: 0;
+	color: var(--color-text);
+	background: var(--color-background);
+	font-family: var(--font-ui);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+button, select { font: inherit; }
+
+button:focus-visible,
+select:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 3px;
+}
+
+/* ── Shell ──────────────────────────────────── */
+.app-shell {
+	position: relative;
+	display: grid;
+	grid-template-columns: 1fr;
+	min-height: 100vh;
+	overflow: hidden;
+}
+
+/* ── Panel de control flotante ──────────────── */
+.control-glass {
+	position: absolute;
+	top: 20px;
+	left: 20px;
+	z-index: 100;
+	width: min(320px, calc(100vw - 40px));
+
+	/* La sombra y el radio se manejan aquí, el glass-element
+	   aporta el backdrop-filter y el fondo */
+	border-radius: var(--radius-panel);
+	box-shadow: var(--shadow-panel);
+
+	/* glass-element usa display:inline-block — forzar block para el layout */
+	display: block !important;
+}
+
+/* Rim de luz superior (efecto Apple) */
+.control-glass::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: var(--radius-panel);
+	border: 1px solid var(--color-border);
+	pointer-events: none;
+	z-index: 1;
+}
+
+/* ── Sidebar interior ───────────────────────── */
+.sidebar {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	width: 100%;
+	padding: 0;
+	border-radius: var(--radius-panel);
+	overflow: hidden;
+}
+
+/* ── Secciones del sidebar ──────────────────── */
+.sidebar-section {
+	padding: 18px 20px;
+}
+
+.sidebar-section + .sidebar-section {
+	border-top: 1px solid var(--color-border-soft);
+}
+
+/* ── Header / Brand ─────────────────────────── */
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 13px;
+}
+
+.brand-mark {
+	display: grid;
+	place-items: center;
+	flex: 0 0 auto;
+	width: 38px;
+	height: 38px;
+	color: var(--color-text);
+	background: var(--color-accent);
+	border-radius: 11px;
+	box-shadow:
+		0 0 0 1px rgba(10, 132, 255, 0.50),
+		0 4px 14px rgba(10, 132, 255, 0.34);
+	font-family: var(--font-display);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+}
+
+.brand-text {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.eyebrow {
+	color: var(--color-text-tertiary);
+	font-size: 10px;
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+}
+
+h1 {
+	font-family: var(--font-display);
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: -0.025em;
+	color: var(--color-text);
+}
+
+/* ── Intro ──────────────────────────────────── */
+.intro-text {
+	color: var(--color-text-secondary);
+	font-size: 12px;
+	line-height: 1.5;
+	letter-spacing: -0.01em;
+}
+
+/* ── Formulario de ruta ─────────────────────── */
+.route-form {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.field-group {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.field-group + .field-group {
+	margin-top: 4px;
+}
+
+/* Label con dot de color */
+.field-label {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	color: var(--color-text-tertiary);
+	font-size: 10.5px;
+	font-weight: 600;
+	line-height: 1;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.field-dot {
+	width: 6px;
+	height: 6px;
+	flex: 0 0 6px;
+	border-radius: 50%;
+}
+
+.field-dot.origin {
+	background: var(--color-success);
+	box-shadow: 0 0 0 2.5px var(--color-success-glow);
+}
+
+.field-dot.destination {
+	background: var(--color-danger);
+	box-shadow: 0 0 0 2.5px var(--color-danger-glow);
+}
+
+/* Select Apple-style */
+select {
+	width: 100%;
+	min-height: 36px;
+	padding: 8px 11px;
+	color: var(--color-text);
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-control);
+	outline: none;
+	cursor: pointer;
+	font-size: 13.5px;
+	font-weight: 400;
+	letter-spacing: -0.01em;
+	transition: var(--transition-standard);
+	appearance: none;
+	-webkit-appearance: none;
+
+	/* Flecha personalizada */
+	background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='rgba(255,255,255,0.3)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 11px center;
+	padding-right: 32px;
+}
+
+select:hover {
+	background-color: var(--color-surface-raised);
+	border-color: var(--color-border-strong);
+}
+
+select:focus {
+	border-color: rgba(10, 132, 255, 0.75);
+	box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.16);
+	background-color: var(--color-surface-raised);
+}
+
+select option {
+	color: #1c1c1e;
+	background: #f2f2f7;
+}
+
+/* ── Separador de acciones ──────────────────── */
+.form-divider {
+	height: 1px;
+	background: var(--color-border-soft);
+	margin: 8px 0;
+}
+
+/* ── Botón calcular ruta ────────────────────── */
+.primary-action {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 42px;
+	padding: 11px 20px;
+	color: var(--color-text);
+	background: var(--color-accent);
+	border: 0;
+	border-radius: var(--radius-pill);
+	box-shadow: var(--shadow-button-accent);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 590;
+	letter-spacing: -0.01em;
+	transition: var(--transition-standard);
+	overflow: hidden;
+	width: 100%;
+}
+
+/* Brillo superior del botón (efecto Apple pill) */
+.primary-action::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: linear-gradient(
+		to bottom,
+		rgba(255, 255, 255, 0.16) 0%,
+		rgba(255, 255, 255, 0.00) 60%
+	);
+	pointer-events: none;
+}
+
+.primary-action:hover {
+	background: var(--color-accent-hover);
+	box-shadow:
+		0 1px 3px  rgba(0, 0, 0, 0.22),
+		0 6px 20px rgba(10, 132, 255, 0.40);
+	transform: translateY(-1px) scale(1.01);
+}
+
+.primary-action:active {
+	transform: scale(0.97);
+	box-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.18),
+		0 2px 8px rgba(10, 132, 255, 0.24);
+}
+
+.primary-action:disabled {
+	background: var(--color-surface-strong);
+	color: var(--color-text-tertiary);
+	box-shadow: none;
+	cursor: not-allowed;
+	transform: none;
+}
+
+.btn-icon {
+	font-size: 16px;
+	line-height: 1;
+	opacity: 0.9;
+}
+
+/* ── Panel de estado ────────────────────────── */
+.status-panel {
+	display: flex;
+	align-items: flex-start;
+	gap: 11px;
+	padding: 13px 14px;
+	background: var(--color-surface);
+	border: 1px solid var(--color-border-soft);
+	border-radius: var(--radius-card);
+	transition:
+		background 0.35s var(--ease-out),
+		border-color 0.35s var(--ease-out),
+		opacity 0.3s ease,
+		transform 0.3s var(--ease-spring);
+}
+
+.status-panel.is-ready {
+	background: rgba(48, 209, 88, 0.09);
+	border-color: rgba(48, 209, 88, 0.24);
+}
+
+.status-dot {
+	flex: 0 0 auto;
+	width: 7px;
+	height: 7px;
+	margin-top: 4px;
+	background: var(--color-warning);
+	border-radius: 50%;
+	box-shadow: 0 0 0 2.5px var(--color-warning-glow);
+	transition: var(--transition-standard);
+}
+
+.is-ready .status-dot {
+	background: var(--color-success);
+	box-shadow: 0 0 0 2.5px var(--color-success-glow);
+}
+
+.status-body strong {
+	display: block;
+	margin-bottom: 3px;
+	font-size: 13px;
+	font-weight: 590;
+	line-height: 1.35;
+	letter-spacing: -0.01em;
+}
+
+.status-body p {
+	color: var(--color-text-secondary);
+	font-size: 11.5px;
+	line-height: 1.45;
+}
+
+/* ── Leyenda ────────────────────────────────── */
+.legend {
+	display: flex;
+	flex-direction: column;
+	gap: 9px;
+	color: var(--color-text-secondary);
+	font-size: 11.5px;
+}
+
+.legend-item {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+}
+
+.legend-pin {
+	width: 7px;
+	height: 7px;
+	flex: 0 0 7px;
+	background: var(--color-success);
+	border-radius: 50%;
+	box-shadow: 0 0 0 2.5px var(--color-success-glow);
+}
+
+.legend-pin.destination {
+	background: var(--color-danger);
+	box-shadow: 0 0 0 2.5px var(--color-danger-glow);
+}
+
+.legend-line {
+	width: 18px;
+	flex: 0 0 18px;
+	height: 0;
+	border-top: 2px solid var(--color-accent);
+	opacity: 0.7;
+}
+
+/* ── Footer del panel ───────────────────────── */
+.panel-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	color: var(--color-text-quaternary);
+	font-size: 10px;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+}
+
+/* ── Área del mapa ──────────────────────────── */
+.map-area {
+	position: relative;
+	min-width: 0;
+	min-height: 100vh;
+	overflow: hidden;
+	background: #181c22;
+}
+
+/* ── Toolbar del mapa ───────────────────────── */
+.map-toolbar {
+	position: absolute;
+	top: 22px;
+	right: 22px;
+	left: 344px;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	z-index: 10;
+	pointer-events: none;
+}
+
+.map-toolbar > * { pointer-events: auto; }
+
+.map-title-group {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.map-toolbar .eyebrow {
+	font-size: 10px;
+	letter-spacing: 0.1em;
+}
+
+.map-toolbar h2 {
+	font-family: var(--font-display);
+	font-size: 22px;
+	font-weight: 600;
+	letter-spacing: -0.03em;
+	line-height: 1.2;
+	text-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+}
+
+.map-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+/* Botones de control del mapa con glass real */
+.map-control-glass {
+	display: block !important;
+	border-radius: var(--radius-control);
+	box-shadow: var(--shadow-control);
+}
+
+.view-toggle {
+	min-height: 36px;
+	padding: 8px 14px;
+	color: var(--color-text);
+	background: transparent;
+	border: 0;
+	border-radius: var(--radius-control);
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	transition: var(--transition-standard);
+}
+
+.view-toggle:hover {
+	background: var(--color-surface-raised);
+	border-color: var(--color-border-strong);
+	transform: translateY(-1px);
+}
+
+.view-toggle:active { transform: scale(0.97); }
+
+.view-toggle:disabled {
+	color: var(--color-text-tertiary);
+	cursor: wait;
+	transform: none;
+}
+
+.map-controls {
+	display: flex;
+	overflow: hidden;
+	border: 0;
+	border-radius: var(--radius-control);
+	background: transparent;
+}
+
+.map-controls button {
+	width: 36px;
+	height: 36px;
+	color: var(--color-text);
+	background: transparent;
+	border: 0;
+	border-right: 1px solid var(--color-border-soft);
+	cursor: pointer;
+	font-size: 18px;
+	line-height: 1;
+	transition: var(--transition-standard);
+}
+
+.map-controls button:last-child {
+	border-right: 0;
+	font-size: 15px;
+}
+
+.map-controls button:hover { background: var(--color-surface-raised); }
+.map-controls button:active { transform: scale(0.92); background: var(--color-surface-strong); }
+
+/* ── Canvas del mapa ────────────────────────── */
+.map-canvas {
+	width: 100%;
+	height: 100vh;
+	cursor: grab;
+}
+
+.map-canvas:active { cursor: grabbing; }
+.map-canvas svg { display: block; width: 100%; height: 100%; }
+
+/* ── Elementos SVG del mapa ─────────────────── */
+.map-background    { fill: #181c22; }
+.avenue            { fill: none; stroke: rgba(255, 255, 255, 0.15); stroke-width: 12; opacity: 0.9; }
+.river             { fill: none; stroke: rgba(10, 132, 255, 0.22); stroke-width: 26; opacity: 0.75; }
+.district-label    { fill: rgba(255, 255, 255, 0.35); font: 500 14px var(--font-ui); letter-spacing: 1.2px; text-transform: uppercase; }
+
+/* ── Marcadores de hospitales ───────────────── */
+.hospital-marker { cursor: pointer; }
+
+.marker-halo {
+	fill: rgba(255, 255, 255, 0.12);
+	opacity: 0.8;
+}
+
+.marker-dot {
+	fill: var(--color-success);
+	stroke: rgba(255, 255, 255, 0.88);
+	stroke-width: 2;
+}
+
+.hospital-marker.is-destination .marker-dot { fill: var(--color-danger); }
+.hospital-marker.is-origin .marker-halo,
+.hospital-marker.is-destination .marker-halo { r: 16; opacity: 1; }
+
+/* Marcadores remotos (MapLibre / div-based) */
+.remote-hospital-marker {
+	width: 14px;
+	height: 14px;
+	padding: 0;
+	background: var(--color-success);
+	border: 2.5px solid rgba(255, 255, 255, 0.88);
+	border-radius: 50%;
+	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.40);
+	cursor: pointer;
+	transition: var(--transition-standard);
+}
+
+.remote-hospital-marker.is-destination { background: var(--color-danger); }
+.remote-hospital-marker.is-origin      { box-shadow: 0 0 0 5px var(--color-success-glow); }
+
+.remote-hospital-marker:hover { transform: scale(1.2); }
+
+/* ── Nota del mapa ──────────────────────────── */
+.map-note {
+	position: absolute;
+	right: 22px;
+	bottom: 18px;
+	color: var(--color-text-quaternary);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+}
+
+/* ── Responsive ─────────────────────────────── */
+@media (max-width: 760px) {
+	.control-glass {
+		top: 14px;
+		left: 14px;
+		width: min(304px, calc(100vw - 28px));
+	}
+
+	.map-toolbar {
+		top: auto;
+		right: 14px;
+		bottom: 52px;
+		left: 14px;
+		align-items: flex-end;
+	}
+
+	.map-toolbar h2 { font-size: 18px; }
+
+	.map-actions { flex-direction: column; align-items: flex-end; }
+
+	.map-note { right: 14px; bottom: 18px; }
+}
+
+/* ── Accesibilidad ──────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after {
+		transition-duration: 0.01ms !important;
+		animation-duration:  0.01ms !important;
+	}
+}
