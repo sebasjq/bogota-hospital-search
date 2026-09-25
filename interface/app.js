@@ -18,12 +18,10 @@ const destinationPicker = document.querySelector("#destination-select");
 const modelPicker = document.querySelector("#model-select");
 
 const routeModels = [
-	{ id: "bfs", name: "Búsqueda en anchura", description: "BFS · ruta por niveles" },
-	{ id: "dfs", name: "Búsqueda en profundidad", description: "DFS · exploración profunda" },
-	{ id: "dijkstra", name: "Dijkstra", description: "Coste mínimo acumulado" },
-	{ id: "astar", name: "A*", description: "Ruta guiada por heurística" },
-	{ id: "greedy", name: "Greedy Best-First", description: "Prioridad a la proximidad" },
-	{ id: "bidirectional", name: "Búsqueda bidireccional", description: "Explora desde ambos puntos" }
+	{ id: "bfs", name: "Anchura", icon: "account_tree" },
+	{ id: "dijkstra", name: "Costo uniforme", icon: "paid" },
+	{ id: "greedy", name: "Voraz", icon: "near_me" },
+	{ id: "astar", name: "A*", icon: "star" }
 ];
 
 
@@ -55,9 +53,11 @@ function closeModelPicker() {
 
 function updateModelPicker(value) {
 	const text = modelPicker.querySelector(".model-picker-text");
+	const icon = modelPicker.querySelector(".model-picker-icon");
 	const model = routeModels.find(item => item.id === value);
 
 	text.textContent = model ? model.name : "Elegir modelo";
+	icon.textContent = model ? model.icon : "account_tree";
 	text.classList.toggle("is-selected", Boolean(model));
 
 	modelPicker.querySelectorAll(".model-option").forEach(option => {
@@ -77,10 +77,8 @@ function setupModelPicker() {
 		option.dataset.value = model.id;
 		option.setAttribute("role", "option");
 		option.innerHTML = `
-			<span class="material-symbols-rounded model-option-icon" aria-hidden="true">route</span>
 			<span class="model-option-copy">
 				<strong>${model.name}</strong>
-				<small>${model.description}</small>
 			</span>
 		`;
 		option.addEventListener("click", event => {
