@@ -1,8 +1,8 @@
 const mapView = (() => {
 	const bounds = { west: -74.23, east: -73.98, south: 4.45, north: 4.82 };
-	let svg; let viewport; let remoteMap; let remoteMarkers = new Map(); let remoteMode = "2d"; let scale = 1; let offsetX = 0; let offsetY = 0; let dragStart;
+	let svg; let viewport; let remoteMap; let remoteMarkers = new Map(); let remoteMode = "2d"; let scale = 1; let rotation = 0; let offsetX = 0; let offsetY = 0; let dragStart;
 	function project(longitude, latitude) { return { x: ((longitude - bounds.west) / (bounds.east - bounds.west)) * 1000, y: ((bounds.north - latitude) / (bounds.north - bounds.south)) * 1400 }; }
-	function transform() { viewport.setAttribute("transform", `translate(${offsetX} ${offsetY}) scale(${scale})`); }
+	function transform() { viewport.setAttribute("transform", `translate(${offsetX} ${offsetY}) rotate(${rotation} 500 700) scale(${scale})`); }
 	function line(points, className) {
 		const element = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
 		element.setAttribute("points", points.map(([longitude, latitude]) => { const point = project(longitude, latitude); return `${point.x},${point.y}`; }).join(" "));
@@ -23,7 +23,10 @@ const mapView = (() => {
 		svg.addEventListener("pointermove", event => { if (dragStart) { offsetX = event.clientX - dragStart.x; offsetY = event.clientY - dragStart.y; transform(); } }); svg.addEventListener("pointerup", () => { dragStart = undefined; });
 	}
 	function setZoom(nextScale) { if (remoteMap) { remoteMap.zoomTo(Math.min(16, Math.max(10, remoteMap.getZoom() + (nextScale > 1 ? 1 : -1)))); return; } scale = Math.min(3, Math.max(0.8, nextScale)); transform(); }
-	function reset() { if (remoteMap) { remoteMap.flyTo({ center: [-74.08, 4.65], zoom: remoteMode === "3d" ? 14 : 11.3, pitch: remoteMode === "3d" ? 55 : 0, bearing: remoteMode === "3d" ? -20 : 0 }); return; } scale = 1; offsetX = 0; offsetY = 0; transform(); }
+	function zoomIn() { setZoom(remoteMap ? 2 : scale + 0.2); }
+	function zoomOut() { setZoom(remoteMap ? 0 : scale - 0.2); }
+	function rotate(degrees) { if (remoteMap) { remoteMap.rotateTo(remoteMap.getBearing() + degrees, { duration: 500 }); return; } rotation = (rotation + degrees) % 360; transform(); }
+	function reset() { if (remoteMap) { remoteMap.flyTo({ center: [-74.08, 4.65], zoom: remoteMode === "3d" ? 14 : 11.3, pitch: remoteMode === "3d" ? 55 : 0, bearing: remoteMode === "3d" ? -20 : 0 }); return; } scale = 1; rotation = 0; offsetX = 0; offsetY = 0; transform(); }
 	function mark(id, type) {
 		if (remoteMap) {
 			remoteMarkers.forEach((marker, markerId) => marker.getElement().classList.toggle(type, markerId === id));
@@ -43,7 +46,6 @@ const mapView = (() => {
 			renderWorldCopies: false,
 			antialias: true
 		});
-		remoteMap.addControl(new maplibregl.NavigationControl(), "bottom-right");
 		return new Promise((resolve, reject) => {
 			remoteMap.once("error", event => { if (event.error) reject(event.error); });
 		remoteMap.on("load", () => {
@@ -59,17 +61,18 @@ const mapView = (() => {
 				const marker = new maplibregl.Marker({ element }).setLngLat([hospital.longitude, hospital.latitude]).addTo(remoteMap);
 				remoteMarkers.set(hospital.id, marker);
 			});
+				setRemoteMode(remoteMode);
 			resolve();
 		});
 		});
 	}
 	function setRemoteMode(mode) {
-		if (!remoteMap) return;
 		remoteMode = mode;
+		if (!remoteMap) return;
 		if (remoteMap.getLayer("bogota-buildings-3d")) remoteMap.setLayoutProperty("bogota-buildings-3d", "visibility", mode === "3d" ? "visible" : "none");
 		remoteMap.easeTo({ center: [-74.08, 4.65], zoom: mode === "3d" ? 14 : 11.3, pitch: mode === "3d" ? 55 : 0, bearing: mode === "3d" ? -20 : 0, duration: 2200 });
 	}
 	function isRemote() { return Boolean(remoteMap); }
 	function getMode() { return remoteMode; }
-	return { init, setZoom, reset, mark, enableRemoteMap, setRemoteMode, isRemote, getMode };
+	return { init, setZoom, zoomIn, zoomOut, rotate, reset, mark, enableRemoteMap, setRemoteMode, isRemote, getMode };
 })();

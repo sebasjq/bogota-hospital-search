@@ -173,7 +173,8 @@ class GlassElement extends HTMLElement {
     }
 
     get blur() {
-        return parseInt(this.getAttribute('blur')) || 2;
+        const value = parseInt(this.getAttribute('blur'));
+        return Number.isNaN(value) ? 2 : value;
     }
 
     get strength() {
@@ -353,16 +354,20 @@ class GlassElement extends HTMLElement {
                 }
                 
                 .glass-box {
-                    background: rgba(255, 255, 255, 0.4);
-                    box-shadow: 1px 1px 1px 0px rgba(255,255,255, 0.60) inset, -1px -1px 1px 0px rgba(255,255,255, 0.60) inset, 0px 0px 16px 0px rgba(0,0,0, 0.04);
+                    background: transparent;
+                    border: 1px solid rgba(255, 255, 255, 0.46);
+                    box-shadow: 1px 1px 1px 0px rgba(255,255,255, 0.72) inset, -1px -1px 1px 0px rgba(255,255,255, 0.34) inset, 0px 10px 22px 0px rgba(20, 44, 52, 0.18);
                     cursor: pointer;
-                    transition: transform 0.1s ease;
+                    transition: transform 0.16s ease, box-shadow 0.16s ease;
                     position: relative;
+                    isolation: isolate;
+                    box-sizing: border-box;
                     ${this.autoSize ? `display: inline-block; width: fit-content; min-width: ${this.minWidth}px; min-height: ${this.minHeight}px;` : ''}
                 }
                 
                 .glass-box:active {
-                    transform: scale(0.98);
+                    transform: scale(0.96);
+                    box-shadow: 1px 1px 1px 0px rgba(255,255,255, 0.54) inset, -1px -1px 1px 0px rgba(255,255,255, 0.24) inset, 0px 4px 14px 0px rgba(20, 44, 52, 0.14);
                 }
 
                 .content {

@@ -3,163 +3,118 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Rutas hospitalarias · Bogotá</title>
+	<title>Mapa de Bogotá</title>
 
-	<!-- Fuentes — fallback offline-friendly: Google Fonts solo en desarrollo -->
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,590;1,9..40,400&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
 
-	<link rel="stylesheet" href="theme.css">
+	<link
+		href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0"
+		rel="stylesheet"
+	>
+
 	<link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
-<main class="app-shell">
 
-	<!-- ── Panel de control flotante ─────────── -->
-	<glass-element
-		class="control-glass"
-		auto-size
-		min-width="304"
-		background-color="rgba(18, 18, 22, 0.72)"
-		radius="22"
-		blur="40"
-		strength="18"
-		chromatic-aberration="1"
-	>
-		<aside class="sidebar">
+	<main id="map" aria-label="Mapa de Bogotá"></main>
 
-			<!-- Sección: Identidad -->
-			<div class="sidebar-section">
-				<header class="brand">
-					<span class="brand-mark" aria-hidden="true">BOG</span>
-					<div class="brand-text">
-						<p class="eyebrow">Laboratorio IA</p>
-						<h1>Rutas hospitalarias</h1>
-					</div>
-				</header>
+	<nav class="map-toolbar" aria-label="Controles del mapa">
+
+		<!-- Botón 2D / 3D -->
+		<glass-element
+			class="glass-control mode-control"
+			auto-size
+			radius="999"
+			blur="1"
+			depth="8"
+			strength="32"
+			chromatic-aberration="3"
+			background-color="transparent"
+			style="--glass-padding: 0;"
+		>
+			<button
+				id="mode-toggle"
+				class="map-button mode-button"
+				type="button"
+				aria-label="Cambiar vista"
+			>
+				<span
+					id="mode-label"
+					class="material-symbols-rounded mode-icon"
+					aria-hidden="true"
+				>view_in_ar</span>
+			</button>
+		</glass-element>
+
+		<!-- Controles de navegación -->
+		<glass-element
+			class="glass-control navigation-control"
+			auto-size
+			radius="999"
+			blur="1"
+			depth="8"
+			strength="32"
+			chromatic-aberration="3"
+			background-color="transparent"
+			style="--glass-padding: 0;"
+		>
+			<div
+				class="map-button-group"
+				role="group"
+				aria-label="Navegación del mapa"
+			>
+
+				<button
+					id="zoom-in"
+					class="map-button"
+					type="button"
+					title="Acercar"
+					aria-label="Acercar"
+				>
+					<span
+						class="material-symbols-rounded button-icon"
+						aria-hidden="true"
+					>add</span>
+				</button>
+
+				<button
+					id="zoom-out"
+					class="map-button"
+					type="button"
+					title="Alejar"
+					aria-label="Alejar"
+				>
+					<span
+						class="material-symbols-rounded button-icon"
+						aria-hidden="true"
+					>remove</span>
+				</button>
+
+				<button
+					id="rotate-map"
+					class="map-button"
+					type="button"
+					title="Girar mapa"
+					aria-label="Girar mapa"
+				>
+					<span
+						class="material-symbols-rounded button-icon"
+						aria-hidden="true"
+					>360</span>
+				</button>
+
 			</div>
+		</glass-element>
 
-			<!-- Sección: Descripción -->
-			<div class="sidebar-section">
-				<p class="intro-text">
-					Selecciona dos hospitales para trazar la ruta que calculará el algoritmo de búsqueda.
-				</p>
-			</div>
+	</nav>
 
-			<!-- Sección: Formulario -->
-			<div class="sidebar-section">
-				<form id="route-form" class="route-form" novalidate>
+	<script src="liquidglass/displacement-utils.js"></script>
+	<script src="liquidglass/glass-element.js"></script>
+	<script src="config.js"></script>
+	<script src="map.js"></script>
+	<script src="app.js"></script>
 
-					<div class="field-group">
-						<label class="field-label" for="origin-select">
-							<span class="field-dot origin" aria-hidden="true"></span>
-							Origen
-						</label>
-						<select id="origin-select" required>
-							<option value="">Selecciona un hospital</option>
-						</select>
-					</div>
-
-					<div class="field-group">
-						<label class="field-label" for="destination-select">
-							<span class="field-dot destination" aria-hidden="true"></span>
-							Destino
-						</label>
-						<select id="destination-select" required>
-							<option value="">Selecciona un hospital</option>
-						</select>
-					</div>
-
-					<div class="form-divider"></div>
-
-					<button type="submit" class="primary-action" disabled>
-						Calcular ruta
-						<span class="btn-icon" aria-hidden="true">↗</span>
-					</button>
-
-				</form>
-			</div>
-
-			<!-- Sección: Estado -->
-			<div class="sidebar-section">
-				<section id="route-status" class="status-panel" aria-live="polite">
-					<span class="status-dot"></span>
-					<div class="status-body">
-						<strong>Sin calcular</strong>
-						<p>El algoritmo de búsqueda se integrará en la siguiente fase.</p>
-					</div>
-				</section>
-			</div>
-
-			<!-- Sección: Leyenda -->
-			<div class="sidebar-section">
-				<div class="legend" aria-label="Leyenda del mapa">
-					<div class="legend-item">
-						<i class="legend-pin" aria-hidden="true"></i>
-						<span>Hospital origen</span>
-					</div>
-					<div class="legend-item">
-						<i class="legend-pin destination" aria-hidden="true"></i>
-						<span>Hospital destino</span>
-					</div>
-					<div class="legend-item">
-						<i class="legend-line" aria-hidden="true"></i>
-						<span>Vías principales</span>
-					</div>
-				</div>
-			</div>
-
-			<!-- Sección: Footer -->
-			<div class="sidebar-section">
-				<div class="panel-footer">
-					<span>100% local · offline</span>
-					<span id="hospital-count">— hospitales</span>
-				</div>
-			</div>
-
-		</aside>
-	</glass-element>
-
-	<!-- ── Área del mapa ─────────────────────── -->
-	<section class="map-area" aria-label="Mapa de Bogotá">
-
-		<!-- Toolbar del mapa -->
-		<div class="map-toolbar">
-			<div class="map-title-group">
-				<p class="eyebrow">Vista general</p>
-				<h2>Bogotá D.C.</h2>
-			</div>
-			<div class="map-actions">
-				<glass-element class="map-control-glass view-glass" auto-size radius="10" blur="24" strength="16" chromatic-aberration="0.7" background-color="rgba(24, 24, 28, 0.72)">
-					<button id="enable-3d" class="view-toggle" type="button">Vista 3D</button>
-				</glass-element>
-				<glass-element class="map-control-glass controls-glass" auto-size radius="10" blur="24" strength="16" chromatic-aberration="0.7" background-color="rgba(24, 24, 28, 0.72)">
-					<div class="map-controls" role="group" aria-label="Controles del mapa">
-						<button id="zoom-in" type="button" title="Acercar" aria-label="Acercar">+</button>
-						<button id="zoom-out" type="button" title="Alejar" aria-label="Alejar">-</button>
-						<button id="reset-view" type="button" title="Restablecer vista" aria-label="Restablecer vista">↺</button>
-					</div>
-				</glass-element>
-			</div>
-		</div>
-
-		<!-- Canvas del mapa -->
-		<div id="map" class="map-canvas"></div>
-
-		<p class="map-note">Base local · datos OSM procesados</p>
-
-	</section>
-
-</main>
-
-<!-- Liquid Glass Web Component -->
-<script src="liquidglass/displacement-utils.js"></script>
-<script src="liquidglass/glass-element.js"></script>
-
-<!-- Lógica de la aplicación (sin cambios) -->
-<script src="config.js"></script>
-<script src="map.js"></script>
-<script src="app.js"></script>
 </body>
 </html>
