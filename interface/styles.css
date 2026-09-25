@@ -2,6 +2,14 @@
 	box-sizing: border-box;
 }
 
+:root {
+	--apple-label: rgba(0, 0, 0, 0.85);
+	--apple-secondary-label: rgba(60, 60, 67, 0.6);
+	--apple-tertiary-label: rgba(60, 60, 67, 0.3);
+	--apple-gray: #8e8e93;
+	--apple-blue: #007aff;
+}
+
 html,
 body {
 	width: 100%;
@@ -22,6 +30,11 @@ body {
 		sans-serif;
 }
 
+
+/* =========================
+   MAPA
+========================= */
+
 #map {
 	position: relative;
 	width: 100vw;
@@ -30,14 +43,20 @@ body {
 	cursor: grab;
 }
 
-.map-toolbar {
-	position: absolute;
-	top: 20px;
-	right: 20px;
-	display: flex;
-	gap: 8px;
-	z-index: 10;
+#map:active {
+	cursor: grabbing;
 }
+
+#map > svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+
+/* =========================
+   GLASS
+========================= */
 
 .glass-control {
 	display: block !important;
@@ -45,22 +64,392 @@ body {
 	box-shadow: none;
 }
 
+
+/* =========================
+   PANEL DE RUTA
+========================= */
+
+.route-panel {
+	position: absolute;
+	top: 20px;
+	left: 20px;
+	width: min(284px, calc(100vw - 32px));
+	z-index: 10;
+}
+
+.route-form {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: 14px;
+}
+
+.route-card {
+	width: 100%;
+	text-align: center;
+}
+
+.route-logo-space {
+	width: 100%;
+	height: 48px;
+}
+
+.route-section-heading p {
+	margin: 0;
+	color: var(--apple-secondary-label);
+	font-size: 13px;
+	line-height: 1.35;
+}
+
+.route-section-heading {
+	width: 100%;
+	margin-bottom: 14px;
+	padding: 1px 4px 0;
+	text-align: center;
+}
+
+.route-section-heading h2 {
+	margin: 0 0 4px;
+	color: var(--apple-label);
+	font-size: 17px;
+	font-weight: 500;
+	letter-spacing: -0.01em;
+}
+
+.route-field {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	max-width: 280px;
+	gap: 9px;
+	margin-inline: auto;
+}
+
+.route-points-card .route-field + .route-field {
+	margin-top: 16px;
+}
+
+.route-label {
+	width: calc(100% - 24px);
+	margin-inline: auto;
+	padding-left: 0;
+	text-align: left;
+
+	color: var(--apple-secondary-label);
+
+	font-size: 15px;
+	font-weight: 400;
+	letter-spacing: 0.01em;
+}
+
+
+/* =========================
+   SELECTOR PERSONALIZADO
+========================= */
+
+.hospital-picker {
+	position: relative;
+	width: 100%;
+	outline: none;
+}
+
+.hospital-picker-button {
+	position: relative;
+
+	width: calc(100% - 24px);
+	height: 46px;
+	margin-inline: auto;
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	padding: 0 8px;
+
+	border: 1px solid rgba(142, 142, 147, 0.55);
+	border-radius: 999px;
+
+	background: transparent;
+
+	color: #007aff;
+
+	cursor: pointer;
+
+	box-shadow: none;
+
+	transition:
+		border-color 160ms ease,
+		box-shadow 160ms ease;
+}
+
+.hospital-picker.is-open .hospital-picker-button {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+	border-bottom-color: #007aff;
+	box-shadow: inset 0 -2px 0 #007aff;
+}
+
+.hospital-picker-button:hover {
+	border-color: rgba(142, 142, 147, 0.78);
+}
+
+.hospital-picker:focus-visible .hospital-picker-button {
+	border-color: rgba(142, 142, 147, 0.9);
+	outline: 2px solid rgba(142, 142, 147, 0.45);
+	outline-offset: 2px;
+}
+
+.hospital-picker-icon {
+	position: absolute;
+	left: 14px;
+
+	font-size: 30px !important;
+	font-variation-settings:
+		"FILL" 0,
+		"wght" 400,
+		"GRAD" 0,
+		"opsz" 24;
+
+	opacity: 1;
+}
+
+.hospital-picker-text {
+	min-width: 0;
+	max-width: none;
+	flex: 1 1 0;
+	margin-inline: 38px;
+
+	overflow: hidden;
+
+	color: #007aff;
+
+	font-size: 14px;
+	font-weight: 400;
+	text-align: center;
+
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.hospital-picker-text.is-selected {
+	color: #007aff;
+	font-weight: 400;
+}
+
+.hospital-picker-arrow {
+	position: absolute;
+	right: 14px;
+
+	font-size: 24px !important;
+
+	color: #007aff;
+
+	transition: transform 180ms ease;
+}
+
+.hospital-picker.is-open .hospital-picker-arrow {
+	transform: rotate(180deg);
+}
+
+
+/* =========================
+   LISTA DE HOSPITALES
+========================= */
+
+.hospital-options {
+	position: relative;
+
+	max-height: 0;
+	padding: 0;
+	margin-top: 0;
+	overflow: hidden;
+
+	border: 0 solid rgba(255, 255, 255, 0.62);
+	border-radius: 16px;
+
+	background: rgba(246, 250, 251, 0.94);
+
+	box-shadow: none;
+
+	backdrop-filter: blur(24px) saturate(145%);
+	-webkit-backdrop-filter: blur(24px) saturate(145%);
+
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(-4px);
+	transform-origin: top center;
+	will-change: max-height, margin-top, padding, opacity, transform;
+
+	transition:
+		max-height 260ms cubic-bezier(0.16, 1, 0.3, 1),
+		margin-top 260ms cubic-bezier(0.16, 1, 0.3, 1),
+		padding 260ms cubic-bezier(0.16, 1, 0.3, 1),
+		border-width 260ms cubic-bezier(0.16, 1, 0.3, 1),
+		opacity 180ms ease,
+		transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+		visibility 0s linear 260ms;
+
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.hospital-options::-webkit-scrollbar,
+.model-options::-webkit-scrollbar {
+	display: none;
+}
+
+.hospital-picker.is-open .hospital-options {
+	width: calc(100% - 24px);
+	margin-inline: auto;
+	max-height: 250px;
+	padding: 0;
+	margin-top: 0;
+	border-width: 1px;
+	border-radius: 0 0 16px 16px;
+	overflow-y: auto;
+	opacity: 1;
+	visibility: visible;
+	transform: translateY(0);
+	transition-delay: 0s;
+}
+
+.hospital-option {
+	width: 100%;
+	min-height: 42px;
+
+	display: flex;
+	align-items: center;
+
+	padding: 9px 11px;
+
+	border: 0;
+	border-radius: 0;
+
+	background: transparent;
+
+	color: var(--apple-label);
+
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 400;
+	line-height: 1.35;
+
+	text-align: left;
+
+	cursor: pointer;
+
+	transition:
+		background 120ms ease,
+		color 120ms ease;
+}
+
+.hospital-option:hover {
+	background: rgba(0, 122, 255, 0.08);
+	color: #006ee6;
+}
+
+.hospital-option + .hospital-option {
+	border-top: 1px solid rgba(142, 142, 147, 0.26);
+}
+
+.hospital-option.is-selected {
+	background: rgba(0, 122, 255, 0.08);
+	color: var(--apple-blue);
+	font-weight: 600;
+}
+
+.hospital-option:focus-visible {
+	outline: 2px solid rgba(0, 122, 255, 0.4);
+	outline-offset: -2px;
+}
+
+.hospital-option-text {
+	min-width: 0;
+	line-height: 1.3;
+	white-space: normal;
+}
+
+
+/* =========================
+   BOTÓN CALCULAR RUTA
+========================= */
+
+.route-button {
+	width: auto;
+	min-width: 0;
+	height: 40px;
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	padding: 0 18px;
+	margin-inline: auto;
+	margin-top: 16px;
+
+	border: 0;
+	border-radius: 999px;
+
+	color: #fff;
+	background: #007aff;
+
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 400;
+
+	cursor: pointer;
+
+	transition:
+		background 160ms ease,
+		opacity 160ms ease;
+}
+
+.route-button:hover:not(:disabled) {
+	background: #006ee6;
+}
+
+.route-button:disabled {
+	opacity: 0.42;
+	cursor: not-allowed;
+}
+
+/* =========================
+   CONTROLES DEL MAPA
+========================= */
+
+.map-toolbar {
+	position: absolute;
+	top: 20px;
+	right: 20px;
+
+	display: flex;
+	gap: 8px;
+
+	z-index: 10;
+}
+
 .map-button-group {
 	display: flex;
 	overflow: hidden;
+
 	border: 0;
 	border-radius: 999px;
+
 	background: transparent;
 }
 
 .map-button {
-	min-width: 60px;
-	height: 60px;
+	min-width: 56px;
+	height: 56px;
+
 	padding: 0 14px;
 
 	color: #007aff;
 	background: transparent;
+
 	border: 0;
+
 	cursor: pointer;
 
 	font-family:
@@ -82,28 +471,33 @@ body {
 
 	transition:
 		color 160ms ease,
-		transform 160ms ease,
 		text-shadow 160ms ease;
 }
 
 .map-button + .map-button {
-	border-left: 1px solid rgba(0, 122, 255, 0.16);
+	border-left: 1px solid rgba(142, 142, 147, 0.26);
 }
 
-/* Botón de cambio 2D / 3D */
+
+/* =========================
+   BOTÓN 2D / 3D
+========================= */
+
 .mode-button {
-	width: 60px;
-	height: 60px;
-	min-width: 60px;
+	width: 56px;
+	height: 56px;
+	min-width: 56px;
+
 	padding: 0;
+
 	border-radius: 50%;
 }
 
-/* Icono de cambio 2D / 3D */
 .mode-icon {
 	display: block !important;
 
 	font-family: "Material Symbols Rounded" !important;
+
 	font-size: 29px !important;
 	font-weight: 400;
 	line-height: 1;
@@ -113,15 +507,18 @@ body {
 		"wght" 400,
 		"GRAD" 0,
 		"opsz" 24;
-
-	transition: transform 160ms ease;
 }
 
-/* Iconos +, − y 360 */
+
+/* =========================
+   ICONOS
+========================= */
+
 .button-icon {
 	display: block !important;
 
 	font-family: "Material Symbols Rounded" !important;
+
 	font-size: 30px !important;
 	font-weight: 400;
 	line-height: 1;
@@ -133,7 +530,11 @@ body {
 		"opsz" 24;
 }
 
-/* Hover */
+
+/* =========================
+   HOVER
+========================= */
+
 .map-button:hover {
 	color: #006ee6;
 	text-shadow: 0 0 14px rgba(0, 122, 255, 0.18);
@@ -143,12 +544,11 @@ body {
 	transform: scale(1.05);
 }
 
-/* Animación de pulsación para TODOS los botones */
-.map-button:active {
-	transform: scale(0.94);
-}
 
-/* Accesibilidad */
+/* =========================
+   FOCUS
+========================= */
+
 .map-button:focus-visible {
 	box-shadow:
 		inset 0 0 0 2px rgba(255, 255, 255, 0.72),
@@ -160,15 +560,10 @@ button:focus-visible {
 	outline-offset: 3px;
 }
 
-#map:active {
-	cursor: grabbing;
-}
 
-#map > svg {
-	display: block;
-	width: 100%;
-	height: 100%;
-}
+/* =========================
+   MAPA VISUAL
+========================= */
 
 .map-background {
 	fill: #d9e2e5;
@@ -190,10 +585,17 @@ button:focus-visible {
 
 .district-label {
 	fill: rgba(35, 57, 62, 0.46);
+
 	font: 600 14px system-ui, -apple-system, sans-serif;
+
 	letter-spacing: 1.2px;
 	text-transform: uppercase;
 }
+
+
+/* =========================
+   HOSPITALES EN MAPA
+========================= */
 
 .hospital-marker {
 	cursor: pointer;
@@ -206,6 +608,7 @@ button:focus-visible {
 
 .marker-dot {
 	fill: #126b78;
+
 	stroke: rgba(255, 255, 255, 0.95);
 	stroke-width: 2;
 }
@@ -223,11 +626,16 @@ button:focus-visible {
 .remote-hospital-marker {
 	width: 14px;
 	height: 14px;
+
 	padding: 0;
+
 	background: #126b78;
+
 	border: 2.5px solid rgba(255, 255, 255, 0.95);
 	border-radius: 50%;
+
 	box-shadow: 0 1px 6px rgba(24, 51, 57, 0.42);
+
 	cursor: pointer;
 }
 
@@ -243,29 +651,78 @@ button:focus-visible {
 	transform: scale(1.2);
 }
 
+
+/* =========================
+   ACCESIBILIDAD
+========================= */
+
+.sr-only {
+	position: absolute;
+
+	width: 1px;
+	height: 1px;
+
+	padding: 0;
+	margin: -1px;
+
+	overflow: hidden;
+
+	clip: rect(0, 0, 0, 0);
+
+	white-space: nowrap;
+
+	border: 0;
+}
+
+
+/* =========================
+   REDUCIR MOVIMIENTO
+========================= */
+
 @media (prefers-reduced-motion: reduce) {
-	*, *::before, *::after {
+
+	*,
+	*::before,
+	*::after {
 		transition-duration: 0.01ms !important;
 		animation-duration: 0.01ms !important;
 	}
+
 }
 
+
+/* =========================
+   MÓVIL
+========================= */
+
 @media (max-width: 520px) {
+
+	.route-panel {
+		top: 12px;
+		left: 12px;
+		right: 12px;
+		width: auto;
+	}
+
+	.route-form {
+		padding: 16px;
+	}
+
 	.map-toolbar {
 		top: 12px;
 		right: 12px;
 	}
 
 	.map-button {
-		min-width: 52px;
-		height: 52px;
+		min-width: 50px;
+		height: 50px;
 		font-size: 22px;
 	}
 
 	.mode-button {
-		width: 52px;
-		height: 52px;
-		min-width: 52px;
+		width: 50px;
+		height: 50px;
+		min-width: 50px;
 	}
 
 	.mode-icon {
@@ -275,4 +732,175 @@ button:focus-visible {
 	.button-icon {
 		font-size: 25px !important;
 	}
+
+	.hospital-options {
+		max-height: 210px;
+	}
+
+}
+
+.model-field {
+	gap: 8px;
+}
+
+.model-picker {
+	position: relative;
+	width: 100%;
+}
+
+.model-picker-button {
+	position: relative;
+	width: calc(100% - 24px);
+	height: 46px;
+	margin-inline: auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 8px;
+	border: 1px solid rgba(142, 142, 147, 0.55);
+	border-radius: 999px;
+	background: transparent;
+	color: #007aff;
+	cursor: pointer;
+	box-shadow: none;
+	transition:
+		border-color 160ms ease,
+		box-shadow 160ms ease;
+}
+
+.model-picker-button:hover {
+	border-color: rgba(142, 142, 147, 0.78);
+}
+
+.model-picker:focus-visible .model-picker-button {
+	border-color: rgba(142, 142, 147, 0.9);
+	outline: 2px solid rgba(142, 142, 147, 0.45);
+	outline-offset: 2px;
+}
+
+.model-picker-icon {
+	position: absolute;
+	left: 14px;
+	font-size: 24px !important;
+	color: #007aff;
+}
+
+.model-option-copy {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 2px;
+}
+
+.model-picker-text {
+	min-width: 0;
+	max-width: calc(100% - 56px);
+	overflow: hidden;
+	color: #007aff;
+	font-size: 14px;
+	font-weight: 400;
+	text-align: center;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.model-picker-text.is-selected {
+	color: #007aff;
+	font-weight: 400;
+}
+
+.model-picker-arrow {
+	position: absolute;
+	right: 14px;
+	font-size: 24px !important;
+	color: #007aff;
+	transition: transform 180ms ease;
+}
+
+.model-picker.is-open .model-picker-arrow {
+	transform: rotate(180deg);
+}
+
+.model-picker.is-open .model-picker-button {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+	border-bottom-color: #007aff;
+	box-shadow: inset 0 -2px 0 #007aff;
+}
+
+.model-options {
+	position: relative;
+	max-height: 0;
+	overflow: hidden;
+	margin-top: 0;
+	padding: 0;
+	border: 0 solid rgba(255, 255, 255, 0.62);
+	border-radius: 14px;
+	background: rgba(246, 250, 251, 0.96);
+	box-shadow: none;
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(-4px);
+	will-change: max-height, margin-top, padding, opacity, transform;
+	transition: max-height 260ms cubic-bezier(0.16, 1, 0.3, 1), margin-top 260ms cubic-bezier(0.16, 1, 0.3, 1), padding 260ms cubic-bezier(0.16, 1, 0.3, 1), border-width 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease, transform 260ms cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 260ms;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.model-picker.is-open .model-options {
+	width: calc(100% - 24px);
+	margin-inline: auto;
+	max-height: 270px;
+	margin-top: 0;
+	padding: 0;
+	overflow-y: auto;
+	border-width: 1px;
+	border-radius: 0 0 14px 14px;
+	opacity: 1;
+	visibility: visible;
+	transform: translateY(0);
+	transition-delay: 0s;
+}
+
+.model-option {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	width: 100%;
+	min-height: 38px;
+	padding: 7px 8px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: var(--apple-secondary-label);
+	font-size: 13px;
+	font-weight: 400;
+	line-height: 1.35;
+	text-align: left;
+	cursor: pointer;
+}
+
+.model-option + .model-option {
+	border-top: 1px solid rgba(142, 142, 147, 0.26);
+}
+
+.model-option:hover,
+.model-option.is-selected {
+	background: rgba(0, 122, 255, 0.08);
+	color: var(--apple-blue);
+}
+
+.model-option-icon {
+	font-size: 18px !important;
+	opacity: 0.75;
+}
+
+.model-option-copy strong {
+	font: inherit;
+}
+
+.model-option-copy small {
+	color: var(--apple-secondary-label);
+	font: inherit;
+	white-space: nowrap;
 }

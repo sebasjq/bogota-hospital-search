@@ -212,6 +212,10 @@ class GlassElement extends HTMLElement {
 
     setupEventListeners() {
         const glassBox = this.shadowRoot.querySelector('.glass-box');
+
+		if (this.hasAttribute('disable-click-animation')) {
+			return;
+		}
         
         glassBox.addEventListener('mousedown', () => {
             this.clicked = true;
@@ -352,33 +356,49 @@ class GlassElement extends HTMLElement {
                 :host {
                     display: ${this.autoSize ? 'inline-block' : 'block'};
                 }
+
+                :host(.route-card) {
+                    display: block;
+                    width: 100%;
+                }
                 
                 .glass-box {
                     background: transparent;
                     border: 1px solid rgba(255, 255, 255, 0.46);
                     box-shadow: 1px 1px 1px 0px rgba(255,255,255, 0.72) inset, -1px -1px 1px 0px rgba(255,255,255, 0.34) inset, 0px 10px 22px 0px rgba(20, 44, 52, 0.18);
-                    cursor: pointer;
-                    transition: transform 0.16s ease, box-shadow 0.16s ease;
+                    cursor: ${this.hasAttribute('disable-click-animation') ? 'default' : 'pointer'};
+                    ${this.hasAttribute('disable-click-animation') ? '' : 'transition: transform 0.16s ease, box-shadow 0.16s ease;'}
                     position: relative;
                     isolation: isolate;
                     box-sizing: border-box;
                     ${this.autoSize ? `display: inline-block; width: fit-content; min-width: ${this.minWidth}px; min-height: ${this.minHeight}px;` : ''}
                 }
                 
-                .glass-box:active {
+                ${this.hasAttribute('disable-click-animation') ? '' : `.glass-box:active {
                     transform: scale(0.96);
                     box-shadow: 1px 1px 1px 0px rgba(255,255,255, 0.54) inset, -1px -1px 1px 0px rgba(255,255,255, 0.24) inset, 0px 4px 14px 0px rgba(20, 44, 52, 0.14);
-                }
+                }`}
 
                 .content {
                     ${this.autoSize ? '' : 'width: 100%; height: 100%;'}
                     display: flex;
                     align-items: center;
                     justify-content: center;
+					box-sizing: border-box;
                     color: white;
                     text-align: center;
                     font-family: sans-serif;
                     ${this.autoSize ? 'padding: var(--glass-padding, 16px 24px);' : ''}
+                }
+
+				:host(.route-card) .glass-box,
+				:host(.route-card) .content {
+					width: 100%;
+				}
+
+                :host(.route-card) .content {
+                    display: block;
+                    text-align: center;
                 }
             </style>
             <div class="glass-box">

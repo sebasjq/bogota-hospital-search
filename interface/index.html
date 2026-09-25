@@ -20,18 +20,195 @@
 
 	<main id="map" aria-label="Mapa de Bogotá"></main>
 
+	<!-- =========================
+	     PANEL DE RUTA
+	========================= -->
+
+	<form id="route-form" class="route-form route-panel">
+
+			<glass-element
+				class="glass-control route-card logo-card"
+				disable-click-animation
+				auto-size
+				radius="18"
+				blur="2"
+				depth="8"
+				strength="32"
+				chromatic-aberration="3"
+				background-color="rgba(255, 255, 255, 0.5)"
+				style="--glass-padding: 18px;"
+				aria-hidden="true"
+			>
+				<div class="route-logo-space"></div>
+			</glass-element>
+
+			<glass-element
+				class="glass-control route-card route-points-card"
+				disable-click-animation
+				auto-size
+				radius="18"
+				blur="2"
+				depth="8"
+				strength="32"
+				chromatic-aberration="3"
+				background-color="rgba(255, 255, 255, 0.5)"
+				style="--glass-padding: 18px 18px 22px;"
+			>
+				<div class="route-section-heading">
+					<div>
+						<h2>Puntos de ruta</h2>
+						<p>Selecciona el hospital de origen y el hospital de destino.</p>
+					</div>
+				</div>
+
+				<div class="route-field">
+				<label
+					class="route-label"
+					for="origin-select"
+				>
+					Origen
+				</label>
+
+				<div
+					id="origin-select"
+					class="hospital-picker"
+					role="combobox"
+					aria-expanded="false"
+					aria-haspopup="listbox"
+					aria-label="Hospital de origen"
+					tabindex="0"
+				>
+					<div class="hospital-picker-button">
+						<span class="material-symbols-rounded hospital-picker-icon" aria-hidden="true">
+							location_on
+						</span>
+
+						<span
+							class="hospital-picker-text"
+							data-placeholder="Hospital de origen"
+						>
+							Hospital de origen
+						</span>
+
+						<span
+							class="material-symbols-rounded hospital-picker-arrow"
+							aria-hidden="true"
+						>
+							expand_more
+						</span>
+					</div>
+
+					<div class="hospital-options" role="listbox"></div>
+				</div>
+				</div>
+
+				<div class="route-field">
+				<label
+					class="route-label"
+					for="destination-select"
+				>
+					Destino
+				</label>
+
+				<div
+					id="destination-select"
+					class="hospital-picker"
+					role="combobox"
+					aria-expanded="false"
+					aria-haspopup="listbox"
+					aria-label="Hospital de destino"
+					tabindex="0"
+				>
+					<div class="hospital-picker-button">
+						<span class="material-symbols-rounded hospital-picker-icon" aria-hidden="true">
+							flag
+						</span>
+
+						<span
+							class="hospital-picker-text"
+							data-placeholder="Hospital de destino"
+						>
+							Hospital de destino
+						</span>
+
+						<span
+							class="material-symbols-rounded hospital-picker-arrow"
+							aria-hidden="true"
+						>
+							expand_more
+						</span>
+					</div>
+
+					<div class="hospital-options" role="listbox"></div>
+				</div>
+				</div>
+			</glass-element>
+
+			<glass-element
+				class="glass-control route-card route-model-card"
+				disable-click-animation
+				auto-size
+				radius="18"
+				blur="2"
+				depth="8"
+				strength="32"
+				chromatic-aberration="3"
+				background-color="rgba(255, 255, 255, 0.5)"
+				style="--glass-padding: 18px;"
+			>
+				<div class="route-section-heading">
+					<div>
+						<h2>Modelo de búsqueda</h2>
+						<p>Selecciona el algoritmo que quieres utilizar.</p>
+					</div>
+				</div>
+
+				<div class="route-field model-field">
+				<label class="route-label" for="model-select">Modelo</label>
+				<div id="model-select" class="model-picker" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="Modelo de búsqueda" tabindex="0">
+					<button class="model-picker-button" type="button">
+						<span class="material-symbols-rounded model-picker-icon" aria-hidden="true">account_tree</span>
+						<strong class="model-picker-text">Elegir modelo</strong>
+						<span class="material-symbols-rounded model-picker-arrow" aria-hidden="true">expand_more</span>
+					</button>
+					<div class="model-options" role="listbox"></div>
+				</div>
+				</div>
+
+				<button
+					id="calculate-route"
+					class="route-button"
+					type="submit"
+					disabled
+				>
+					<span>Calcular ruta</span>
+				</button>
+
+				<p
+					id="route-status"
+					class="sr-only"
+					aria-live="polite"
+				></p>
+			</glass-element>
+
+	</form>
+
+
+	<!-- =========================
+	     CONTROLES DEL MAPA
+	========================= -->
+
 	<nav class="map-toolbar" aria-label="Controles del mapa">
 
-		<!-- Botón 2D / 3D -->
 		<glass-element
 			class="glass-control mode-control"
 			auto-size
 			radius="999"
-			blur="1"
+			blur="2"
 			depth="8"
 			strength="32"
 			chromatic-aberration="3"
-			background-color="transparent"
+			background-color="rgba(255, 255, 255, 0.5)"
 			style="--glass-padding: 0;"
 		>
 			<button
@@ -44,20 +221,22 @@
 					id="mode-label"
 					class="material-symbols-rounded mode-icon"
 					aria-hidden="true"
-				>view_in_ar</span>
+				>
+					view_in_ar
+				</span>
 			</button>
 		</glass-element>
 
-		<!-- Controles de navegación -->
+
 		<glass-element
 			class="glass-control navigation-control"
 			auto-size
 			radius="999"
-			blur="1"
+			blur="2"
 			depth="8"
 			strength="32"
 			chromatic-aberration="3"
-			background-color="transparent"
+			background-color="rgba(255, 255, 255, 0.5)"
 			style="--glass-padding: 0;"
 		>
 			<div
@@ -76,7 +255,9 @@
 					<span
 						class="material-symbols-rounded button-icon"
 						aria-hidden="true"
-					>add</span>
+					>
+						add
+					</span>
 				</button>
 
 				<button
@@ -89,7 +270,9 @@
 					<span
 						class="material-symbols-rounded button-icon"
 						aria-hidden="true"
-					>remove</span>
+					>
+						remove
+					</span>
 				</button>
 
 				<button
@@ -102,13 +285,16 @@
 					<span
 						class="material-symbols-rounded button-icon"
 						aria-hidden="true"
-					>360</span>
+					>
+						360
+					</span>
 				</button>
 
 			</div>
 		</glass-element>
 
 	</nav>
+
 
 	<script src="liquidglass/displacement-utils.js"></script>
 	<script src="liquidglass/glass-element.js"></script>
