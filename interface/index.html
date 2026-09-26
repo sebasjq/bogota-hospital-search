@@ -20,6 +20,17 @@
 
 	<main id="map" aria-label="Mapa de Bogotá"></main>
 
+	<div
+		id="hospital-notice"
+		class="hospital-notice"
+		role="status"
+		aria-live="polite"
+		aria-atomic="true"
+	>
+		<span class="material-symbols-rounded hospital-notice-icon" aria-hidden="true">check</span>
+		<span id="hospital-notice-text" class="hospital-notice-text"></span>
+	</div>
+
 	<!-- =========================
 	     PANEL DE RUTA
 	========================= -->
@@ -35,6 +46,7 @@
 				depth="8"
 				strength="32"
 				chromatic-aberration="3"
+				performance-mode="optimized"
 				background-color="rgba(255, 255, 255, 0.6)"
 				style="--glass-padding: 20px 20px 24px;"
 			>
@@ -75,10 +87,11 @@
 						</span>
 
 						<span
-							class="material-symbols-rounded hospital-picker-arrow"
+							class="hospital-picker-arrow"
 							aria-hidden="true"
 						>
-							expand_more
+							<span class="material-symbols-rounded hospital-picker-arrow-icon">expand_more</span>
+							<span class="material-symbols-rounded hospital-picker-clear-icon">close</span>
 						</span>
 					</div>
 
@@ -116,10 +129,11 @@
 						</span>
 
 						<span
-							class="material-symbols-rounded hospital-picker-arrow"
+							class="hospital-picker-arrow"
 							aria-hidden="true"
 						>
-							expand_more
+							<span class="material-symbols-rounded hospital-picker-arrow-icon">expand_more</span>
+							<span class="material-symbols-rounded hospital-picker-clear-icon">close</span>
 						</span>
 					</div>
 
@@ -137,6 +151,7 @@
 				depth="8"
 				strength="32"
 				chromatic-aberration="3"
+				performance-mode="optimized"
 				background-color="rgba(255, 255, 255, 0.6)"
 				style="--glass-padding: 20px;"
 			>
@@ -192,6 +207,7 @@
 			depth="8"
 			strength="32"
 			chromatic-aberration="3"
+			performance-mode="optimized"
 			background-color="rgba(255, 255, 255, 0.6)"
 			style="--glass-padding: 0;"
 		>
@@ -220,6 +236,7 @@
 			depth="8"
 			strength="32"
 			chromatic-aberration="3"
+			performance-mode="optimized"
 			background-color="rgba(255, 255, 255, 0.6)"
 			style="--glass-padding: 0;"
 		>

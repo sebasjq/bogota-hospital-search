@@ -78,6 +78,7 @@ class GlassElement extends HTMLElement {
             'base-width',
             'base-height',
             'auto-size',
+            'performance-mode',
             'min-width',
             'min-height'
         ];
@@ -97,8 +98,7 @@ class GlassElement extends HTMLElement {
     setupAutoSizeObserver() {
         // Observer para cambios en el contenido
         const observer = new MutationObserver(() => {
-            // Pequeño delay para que el contenido se renderice
-            setTimeout(() => this.updateStyles(), 0);
+            this.scheduleStyleUpdate();
         });
         
         observer.observe(this, { 
@@ -110,7 +110,7 @@ class GlassElement extends HTMLElement {
         // ResizeObserver para cambios de tamaño
         if (window.ResizeObserver) {
             const resizeObserver = new ResizeObserver(() => {
-                this.updateStyles();
+                this.scheduleStyleUpdate();
             });
             resizeObserver.observe(this.shadowRoot.querySelector('.glass-box'));
         }
@@ -197,6 +197,10 @@ class GlassElement extends HTMLElement {
         return this.hasAttribute('auto-size');
     }
 
+    get performanceMode() {
+        return this.getAttribute('performance-mode') === 'optimized';
+    }
+
     get minWidth() {
         return parseInt(this.getAttribute('min-width')) || 0;
     }
@@ -248,6 +252,14 @@ class GlassElement extends HTMLElement {
         }
     }
 
+    scheduleStyleUpdate() {
+        if (this.styleUpdateFrame) return;
+        this.styleUpdateFrame = requestAnimationFrame(() => {
+            this.styleUpdateFrame = undefined;
+            this.updateStyles();
+        });
+    }
+
     applyDynamicStyles(element) {
         const { getDisplacementFilter, getDisplacementMap } = window.DisplacementUtils;
 
@@ -261,14 +273,8 @@ class GlassElement extends HTMLElement {
             element.style.backdropFilter = 'none';
             element.style.background = 'rgba(255, 255, 255, 0.4)';
             
-            // Forzar múltiples reflows para asegurar medición correcta
-            element.offsetWidth;
-            element.offsetHeight;
-            
-            // Obtener dimensiones usando múltiples métodos para mayor precisión
+            // Leer las dimensiones una sola vez antes de aplicar el filtro.
             const rect = element.getBoundingClientRect();
-            
-            // Usar el método más confiable: getBoundingClientRect
             let actualWidth = Math.ceil(rect.width);
             let actualHeight = Math.ceil(rect.height);
             
@@ -295,9 +301,9 @@ class GlassElement extends HTMLElement {
                 })}")`;
                 element.style.boxShadow = "none";
                 element.style.backdropFilter = "none";
-            } else if (!this.hasSVGFilterSupport) {
+            } else if (this.performanceMode || !this.hasSVGFilterSupport) {
                 // Fallback para navegadores sin soporte
-                element.style.backdropFilter = `blur(${this.blur * 2}px)`;
+                element.style.backdropFilter = `blur(${this.performanceMode ? this.blur : this.blur * 2}px) saturate(130%)`;
                 element.style.background = this.backgroundColor;
                 element.style.boxShadow = '1px 1px 1px 0px rgba(255,255,255, 0.60) inset, -1px -1px 1px 0px rgba(255,255,255, 0.60) inset, 0px 0px 16px 0px rgba(0,0,0, 0.04)';
                 element.style.border = '1px solid rgba(255, 255, 255, 0.3)';
@@ -328,9 +334,9 @@ class GlassElement extends HTMLElement {
                 })}")`;
                 element.style.boxShadow = "none";
                 element.style.backdropFilter = "none";
-            } else if (!this.hasSVGFilterSupport) {
+            } else if (this.performanceMode || !this.hasSVGFilterSupport) {
                 // Fallback para navegadores sin soporte
-                element.style.backdropFilter = `blur(${this.blur * 2}px)`;
+                element.style.backdropFilter = `blur(${this.performanceMode ? this.blur : this.blur * 2}px) saturate(130%)`;
                 element.style.background = this.backgroundColor;
                 element.style.boxShadow = '1px 1px 1px 0px rgba(255,255,255, 0.60) inset, -1px -1px 1px 0px rgba(255,255,255, 0.60) inset, 0px 0px 16px 0px rgba(0,0,0, 0.04)';
                 element.style.border = '1px solid rgba(255, 255, 255, 0.3)';

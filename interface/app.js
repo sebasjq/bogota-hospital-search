@@ -2,7 +2,8 @@ const state = {
 	hospitals: [],
 	origin: "",
 	destination: "",
-	model: ""
+	model: "",
+	activeSelection: "origin"
 };
 
 const mapContainer = document.querySelector("#map");
@@ -16,6 +17,10 @@ const routeStatus = document.querySelector("#route-status");
 const originPicker = document.querySelector("#origin-select");
 const destinationPicker = document.querySelector("#destination-select");
 const modelPicker = document.querySelector("#model-select");
+const hospitalNotice = document.querySelector("#hospital-notice");
+const hospitalNoticeText = document.querySelector("#hospital-notice-text");
+let hospitalNoticeTimer;
+let hospitalNoticeFrame;
 
 const routeModels = [
 	{ id: "bfs", name: "Anchura", icon: "account_tree" },
@@ -118,11 +123,64 @@ function setupModelPicker() {
    SELECCIÓN DESDE EL MAPA
 ========================= */
 
-function selectHospital(id) {
+function setActiveSelection(type) {
+	state.activeSelection = type === "destination" ? "destination" : "origin";
+	originPicker.classList.toggle("is-active", state.activeSelection === "origin");
+	destinationPicker.classList.toggle("is-active", state.activeSelection === "destination");
+}
 
-	if (!state.origin || state.destination) {
-		state.origin = id;
+function showHospitalNotice(hospital, type) {
+	const selectionLabel = type === "destination" ? "Destino" : "Origen";
+
+	hospitalNoticeText.textContent = `${selectionLabel}: ${hospital.name}`;
+	hospitalNotice.classList.remove("is-visible");
+	cancelAnimationFrame(hospitalNoticeFrame);
+	hospitalNoticeFrame = requestAnimationFrame(() => hospitalNotice.classList.add("is-visible"));
+
+	clearTimeout(hospitalNoticeTimer);
+	hospitalNoticeTimer = setTimeout(() => {
+		hospitalNotice.classList.remove("is-visible");
+	}, 5200);
+}
+
+function clearHospital(type) {
+	const targetType = type === "destination" ? "destination" : "origin";
+
+	if (targetType === "origin") {
+		state.origin = "";
+	} else {
 		state.destination = "";
+	}
+
+	updateHospitalPicker(originPicker, state.origin);
+	updateHospitalPicker(destinationPicker, state.destination);
+	updateMarkers();
+	updateRouteControls();
+	setActiveSelection(targetType);
+}
+
+function selectHospital(id, type) {
+	const isMapSelection = !type;
+	const targetType = isMapSelection
+		? id === state.origin
+			? "origin"
+			: id === state.destination
+				? "destination"
+				: !state.origin
+					? "origin"
+					: "destination"
+		: type === "destination" ? "destination" : "origin";
+
+	if (isMapSelection && (id === state.origin || id === state.destination)) {
+		clearHospital(targetType);
+		return;
+	}
+
+	state.activeSelection = targetType;
+	const hospital = state.hospitals.find(item => item.id === id);
+
+	if (targetType === "origin") {
+		state.origin = id;
 	} else {
 		state.destination = id;
 	}
@@ -130,8 +188,14 @@ function selectHospital(id) {
 	updateHospitalPicker(originPicker, state.origin);
 	updateHospitalPicker(destinationPicker, state.destination);
 
+	if (currentDisplayMode === "3d") {
+		mapView.focusHospital(id);
+	}
+
 	updateMarkers();
 	updateRouteControls();
+	setActiveSelection(targetType);
+	if (hospital) showHospitalNotice(hospital, targetType);
 }
 
 
@@ -166,19 +230,8 @@ function createHospitalOptions(picker, type) {
 
 			event.stopPropagation();
 
-			if (type === "origin") {
-				state.origin = hospital.id;
-			} else {
-				state.destination = hospital.id;
-			}
-
-			updateHospitalPicker(
-				picker,
-				hospital.id
-			);
-
-			updateMarkers();
-			updateRouteControls();
+			setActiveSelection(type);
+			selectHospital(hospital.id, type);
 
 			closeAllPickers();
 		});
@@ -195,6 +248,7 @@ function updateHospitalPicker(picker, value) {
 
 	const options =
 		picker.querySelectorAll(".hospital-option");
+	const arrow = picker.querySelector(".hospital-picker-arrow");
 
 	const hospital =
 		state.hospitals.find(item => item.id === value);
@@ -203,6 +257,7 @@ function updateHospitalPicker(picker, value) {
 
 		text.textContent = hospital.name;
 		text.classList.add("is-selected");
+		arrow.classList.add("is-clearable");
 
 	} else {
 
@@ -210,6 +265,7 @@ function updateHospitalPicker(picker, value) {
 			text.dataset.placeholder;
 
 		text.classList.remove("is-selected");
+		arrow.classList.remove("is-clearable");
 	}
 
 	options.forEach(option => {
@@ -277,11 +333,24 @@ function setupHospitalPicker(picker, type) {
 
 	const button =
 		picker.querySelector(".hospital-picker-button");
+	const arrow =
+		picker.querySelector(".hospital-picker-arrow");
 
 	button.addEventListener("click", event => {
 
 		event.stopPropagation();
+		setActiveSelection(type);
+		togglePicker(picker);
+	});
 
+	arrow.addEventListener("click", event => {
+		event.stopPropagation();
+		if (picker.querySelector(".hospital-picker-text").classList.contains("is-selected")) {
+			clearHospital(type);
+			return;
+		}
+
+		setActiveSelection(type);
 		togglePicker(picker);
 	});
 
@@ -397,7 +466,7 @@ async function loadHospitals() {
 					mapContainer,
 					state.hospitals,
 					window.APP_CONFIG.mapTilerKey,
-					selectHospital
+					id => selectHospital(id)
 				);
 
 			} catch (error) {
@@ -405,7 +474,7 @@ async function loadHospitals() {
 				mapView.init(
 					mapContainer,
 					state.hospitals,
-					selectHospital
+					id => selectHospital(id)
 				);
 
 				console.error(error);
@@ -416,7 +485,7 @@ async function loadHospitals() {
 			mapView.init(
 				mapContainer,
 				state.hospitals,
-				selectHospital
+				id => selectHospital(id)
 			);
 		}
 
