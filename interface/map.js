@@ -86,7 +86,7 @@ const mapView = (() => {
 					source: buildingLayer.source,
 					"source-layer": "building",
 					minzoom: 13,
-					filter: [">", ["coalesce", ["get", "render_height"], ["get", "height"], 0], 3],
+					filter: [">", ["coalesce", ["get", "render_height"], ["get", "height"], 0], 6],
 					layout: { visibility: "none" },
 					paint: {
 						"fill-extrusion-color": "#b8aaa0",
