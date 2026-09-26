@@ -72,7 +72,7 @@ const mapView = (() => {
 			maxBounds: [[-74.23, 4.45], [-73.98, 4.82]],
 			maxZoom: 16,
 			renderWorldCopies: false,
-			antialias: true
+			antialias: false
 		});
 		return new Promise((resolve, reject) => {
 			remoteMap.once("error", event => { if (event.error) reject(event.error); });
@@ -80,7 +80,22 @@ const mapView = (() => {
 			const styleLayers = remoteMap.getStyle().layers || [];
 			const buildingLayer = styleLayers.find(layer => layer.type === "fill" && layer['source-layer'] === "building");
 			if (buildingLayer) {
-				remoteMap.addLayer({ id: "bogota-buildings-3d", type: "fill-extrusion", source: buildingLayer.source, "source-layer": "building", layout: { visibility: "none" }, paint: { "fill-extrusion-color": "#b8aaa0", "fill-extrusion-height": ["coalesce", ["get", "render_height"], ["get", "height"], 8], "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0], "fill-extrusion-opacity": 0.78 } });
+				remoteMap.addLayer({
+					id: "bogota-buildings-3d",
+					type: "fill-extrusion",
+					source: buildingLayer.source,
+					"source-layer": "building",
+					minzoom: 13,
+					filter: [">", ["coalesce", ["get", "render_height"], ["get", "height"], 0], 3],
+					layout: { visibility: "none" },
+					paint: {
+						"fill-extrusion-color": "#b8aaa0",
+						"fill-extrusion-height": ["coalesce", ["get", "render_height"], ["get", "height"], 8],
+						"fill-extrusion-base": ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0],
+						"fill-extrusion-opacity": 0.72,
+						"fill-extrusion-vertical-gradient": false
+					}
+				});
 			}
 			hospitals.forEach(hospital => {
 				const element = document.createElement("button");
@@ -88,6 +103,12 @@ const mapView = (() => {
 				element.addEventListener("click", () => onSelect(hospital.id));
 				const marker = new maplibregl.Marker({ element }).setLngLat([hospital.longitude, hospital.latitude]).addTo(remoteMap);
 				remoteMarkers.set(hospital.id, marker);
+			});
+			remoteMap.on("movestart", () => {
+				if (remoteMode === "3d" && remoteMap.getLayer("bogota-buildings-3d")) remoteMap.setLayoutProperty("bogota-buildings-3d", "visibility", "none");
+			});
+			remoteMap.on("moveend", () => {
+				if (remoteMode === "3d" && remoteMap.getLayer("bogota-buildings-3d")) remoteMap.setLayoutProperty("bogota-buildings-3d", "visibility", "visible");
 			});
 				setRemoteMode(remoteMode);
 			resolve();
@@ -98,7 +119,7 @@ const mapView = (() => {
 		remoteMode = mode;
 		if (!remoteMap) return;
 		if (remoteMap.getLayer("bogota-buildings-3d")) remoteMap.setLayoutProperty("bogota-buildings-3d", "visibility", mode === "3d" ? "visible" : "none");
-		remoteMap.easeTo({ center: [-74.08, 4.65], zoom: mode === "3d" ? 14 : 11.3, pitch: mode === "3d" ? 55 : 0, bearing: mode === "3d" ? -20 : 0, duration: 650, essential: true });
+		remoteMap.easeTo({ center: [-74.08, 4.65], zoom: mode === "3d" ? 14 : 11.3, pitch: mode === "3d" ? 45 : 0, bearing: mode === "3d" ? -20 : 0, duration: 650, essential: true });
 	}
 	function isRemote() { return Boolean(remoteMap); }
 	function getMode() { return remoteMode; }
