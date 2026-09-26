@@ -544,8 +544,7 @@ body {
 ========================= */
 
 .route-button {
-	width: auto;
-	min-width: 176px;
+	width: fit-content;
 	height: 50px;
 
 	display: flex;
@@ -563,7 +562,7 @@ body {
 	background: #007aff;
 
 	font-family: inherit;
-	font-size: 15px;
+	font-size: 16px;
 	font-weight: 500;
 
 	cursor: pointer;
