@@ -49,7 +49,6 @@
   {"source": "H22", "target": "H23", "distance_km": null},
   {"source": "H25", "target": "H26", "distance_km": null},
   {"source": "H25", "target": "H29", "distance_km": null},
-  {"source": "H25", "target": "H30", "distance_km": null},
   {"source": "H25", "target": "H31", "distance_km": null},
   {"source": "H25", "target": "H32", "distance_km": null},
   {"source": "H26", "target": "H27", "distance_km": null},
