@@ -13,7 +13,7 @@
     },
     {
         "id": "H03",
-        "name": "Fundación Hospital de La Misericordia",
+        "name": "Fundación Hospital de La Misericordia (HOMI)",
         "latitude": 4.593419751,
         "longitude": -74.08780586
     },
@@ -31,7 +31,7 @@
     },
     {
         "id": "H06",
-        "name": "Empresa Social Del Estado Hospital Universitario de La Samaritana",
+        "name": "Hospital de la Samaritana",
         "latitude": 4.587020264,
         "longitude": -74.08339977
     },
@@ -43,7 +43,7 @@
     },
     {
         "id": "H08",
-        "name": "Fundación Hospital Infantil Universitario de San Jose",
+        "name": "Hospital Infantil Universitario de San José",
         "latitude": 4.66538182,
         "longitude": -74.07794126
     },
@@ -67,7 +67,7 @@
     },
     {
         "id": "H12",
-        "name": "Unidad de Servicios de Salud Santa Clara Hospital Universitario",
+        "name": "Hospital Santa Clara",
         "latitude": 4.591033227,
         "longitude": -74.09191172
     },
@@ -79,9 +79,9 @@
     },
     {
         "id": "H14",
-        "name": "Hospital Jorge Eliecer Gaitan",
-        "latitude": 4.587542336,
-        "longitude": -74.06670643
+        "name": "Hospital Jorge Eliecer Gaitan - SCO",
+        "latitude": 4.58991621,
+        "longitude": -74.06992821
     },
     {
         "id": "H15",
@@ -97,7 +97,7 @@
     },
     {
         "id": "H17",
-        "name": "Unidad de Servicios de Salud Hospital Engativá Calle 80",
+        "name": "USS Hospital Engativá Calle 80",
         "latitude": 4.711372841,
         "longitude": -74.10989743
     },
@@ -122,12 +122,12 @@
     {
         "id": "H21",
         "name": "Hospital El Tunal",
-        "latitude": 4.582016623,
-        "longitude": -74.13078571
+        "latitude": 4.5717237,
+        "longitude": -74.1287970
     },
     {
         "id": "H22",
-        "name": "Unidad de Servicios de Salud Hospital Meissen",
+        "name": "USS Hospital Meissen",
         "latitude": 4.559662316,
         "longitude": -74.13874453
     },
@@ -145,7 +145,7 @@
     },
     {
         "id": "H25",
-        "name": "Hospital Occidente de Kennedy",
+        "name": "Hospital de Kennedy",
         "latitude": 4.616779903,
         "longitude": -74.15383281
     },
@@ -166,5 +166,29 @@
         "name": "Hospital de Bosa",
         "latitude": 4.635412455,
         "longitude": -74.20589586
+    },
+    {
+        "id": "H29",
+        "name": "Clínica del Occidente",
+        "latitude": 4.62947431,
+        "longitude": -74.13574701
+    },
+    {
+        "id": "H30",
+        "name": "Hospital Cardiovascular del Niño de Cundinamarca",
+        "latitude": 4.58237691,
+        "longitude": -74.20044781
+    },
+    {
+        "id": "H31",
+        "name": "USS El Porvenir",
+        "latitude": 4.62499161,
+        "longitude": -74.18177091
+    },
+    {
+        "id": "H32",
+        "name": "SAMU Alqueria Cruz Roja",
+        "latitude": 4.60687081,
+        "longitude": -74.13089901
     }
 ]
