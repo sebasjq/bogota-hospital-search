@@ -1,6 +1,11 @@
+import sys
 import heapq
-from graph import load_graph
+from pathlib import Path
 
+# Agrega la carpeta raíz del proyecto al sys.path para poder importar módulos desde la carpeta logic y scripts
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from logic.graph import load_graph # Importa la función load_graph desde el módulo graph.py en la carpeta logic
 
 def uniform_cost(graph, origin, destination):
     if origin not in graph or destination not in graph:

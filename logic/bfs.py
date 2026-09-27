@@ -1,20 +1,29 @@
+import sys
 from collections import deque
-from graph import load_graph
+from pathlib import Path
+
+# Agrega la carpeta raíz del proyecto al sys.path para poder importar módulos desde la carpeta logic y scripts
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from logic.graph import load_graph
 
 
 def bfs(graph, origin, destination):
     if origin not in graph or destination not in graph:
         raise ValueError("Origin or destination does not exist")
 
+
     queue = deque([(0, [origin])]) # Cola FIFO con distancia acumulada y camino
-    expanded = set()
+    expanded = {} # Diccionario expanded que contendrá el id del hospital y el número de expansión
+
+    tree_edges = []  # Lista para almacenar las aristas del árbol de expansión
 
     while queue:
         distance, path = queue.popleft()
         current = path[-1]
 
         if current == destination: # Si el nodo actual es el destino, se retorna el camino encontrado.
-            return path, distance
+            return path, distance, tree_edges, expanded # Retorna el camino, la distancia acumulada, las aristas del árbol de expansión y los nodos expandidos
         
         if current in expanded: # Si ya se ha expandido este nodo, se omite para evitar ciclos.
             continue  
@@ -25,14 +34,22 @@ def bfs(graph, origin, destination):
 
                 new_path = path + [neighbor] # Se construye el nuevo camino agregando el vecino al camino actual.
                 new_distance = distance + graph[current][neighbor] # Se calcula la nueva distancia acumulada sumando la distancia al vecino.
+
+                tree_edges.append({
+                    "parent": path.copy(),
+                    "child": new_path.copy(),
+                    "g": new_distance
+                    }) # Se agrega la arista al árbol de expansión
+                
                 queue.append((new_distance, new_path)) # Se agrega el nuevo camino a la cola para su posterior exploración.
 
-        expanded.add(current)  # Ya examinamos todos los vecinos de current
+        expanded[current] = len(expanded) + 1  # Se agrega el nodo actual al diccionario expanded con su número de expansión
 
     return None
 
 
 if __name__ == "__main__":
     graph = load_graph()
-    route = bfs(graph, "H16", "H23")
+    route = bfs(graph, "H30", "H29")
     print(route)
+    

@@ -19,9 +19,9 @@ const modelPicker = document.querySelector("#model-select");
 
 const routeModels = [
 	{ id: "bfs", name: "Anchura", icon: "account_tree" },
-	{ id: "dijkstra", name: "Costo uniforme", icon: "paid" },
+	{ id: "uniform_cost", name: "Costo uniforme", icon: "paid" },
 	{ id: "greedy", name: "Voraz", icon: "near_me" },
-	{ id: "astar", name: "A*", icon: "star" }
+	{ id: "a_star", name: "A*", icon: "star" }
 ];
 
 
