@@ -1,60 +1,415 @@
 [
-  {"source": "H01", "target": "H05", "distance_km": null},
-  {"source": "H01", "target": "H16", "distance_km": null},
-  {"source": "H01", "target": "H20", "distance_km": null},
-  {"source": "H02", "target": "H03", "distance_km": null},
-  {"source": "H02", "target": "H06", "distance_km": null},
-  {"source": "H02", "target": "H12", "distance_km": null},
-  {"source": "H02", "target": "H13", "distance_km": null},
-  {"source": "H02", "target": "H21", "distance_km": null},
-  {"source": "H03", "target": "H04", "distance_km": null},
-  {"source": "H03", "target": "H06", "distance_km": null},
-  {"source": "H03", "target": "H12", "distance_km": null},
-  {"source": "H03", "target": "H14", "distance_km": null},
-  {"source": "H04", "target": "H10", "distance_km": null},
-  {"source": "H04", "target": "H12", "distance_km": null},
-  {"source": "H04", "target": "H14", "distance_km": null},
-  {"source": "H04", "target": "H32", "distance_km": null},
-  {"source": "H05", "target": "H16", "distance_km": null},
-  {"source": "H05", "target": "H19", "distance_km": null},
-  {"source": "H06", "target": "H12", "distance_km": null},
-  {"source": "H06", "target": "H13", "distance_km": null},
-  {"source": "H06", "target": "H14", "distance_km": null},
-  {"source": "H07", "target": "H09", "distance_km": null},
-  {"source": "H07", "target": "H10", "distance_km": null},
-  {"source": "H07", "target": "H20", "distance_km": null},
-  {"source": "H08", "target": "H11", "distance_km": null},
-  {"source": "H08", "target": "H20", "distance_km": null},
-  {"source": "H09", "target": "H10", "distance_km": null},
-  {"source": "H09", "target": "H11", "distance_km": null},
-  {"source": "H09", "target": "H20", "distance_km": null},
-  {"source": "H10", "target": "H11", "distance_km": null},
-  {"source": "H10", "target": "H20", "distance_km": null},
-  {"source": "H10", "target": "H29", "distance_km": null},
-  {"source": "H10", "target": "H32", "distance_km": null},
-  {"source": "H11", "target": "H17", "distance_km": null},
-  {"source": "H11", "target": "H20", "distance_km": null},
-  {"source": "H11", "target": "H27", "distance_km": null},
-  {"source": "H12", "target": "H32", "distance_km": null},
-  {"source": "H13", "target": "H15", "distance_km": null},
-  {"source": "H15", "target": "H21", "distance_km": null},
-  {"source": "H15", "target": "H24", "distance_km": null},
-  {"source": "H17", "target": "H18", "distance_km": null},
-  {"source": "H17", "target": "H19", "distance_km": null},
-  {"source": "H17", "target": "H27", "distance_km": null},
-  {"source": "H18", "target": "H27", "distance_km": null},
-  {"source": "H21", "target": "H22", "distance_km": null},
-  {"source": "H21", "target": "H23", "distance_km": null},
-  {"source": "H21", "target": "H32", "distance_km": null},
-  {"source": "H22", "target": "H23", "distance_km": null},
-  {"source": "H25", "target": "H26", "distance_km": null},
-  {"source": "H25", "target": "H29", "distance_km": null},
-  {"source": "H25", "target": "H31", "distance_km": null},
-  {"source": "H25", "target": "H32", "distance_km": null},
-  {"source": "H26", "target": "H27", "distance_km": null},
-  {"source": "H26", "target": "H29", "distance_km": null},
-  {"source": "H28", "target": "H30", "distance_km": null},
-  {"source": "H28", "target": "H31", "distance_km": null},
-  {"source": "H29", "target": "H32", "distance_km": null},
-  {"source": "H30", "target": "H31", "distance_km": null}
+  {
+    "source": "H01",
+    "target": "H05",
+    "direct_distance_km": 5.0,
+    "distance_forward_km": 5.5,
+    "distance_backward_km": 6.8
+  },
+  {
+    "source": "H01",
+    "target": "H16",
+    "direct_distance_km": 5.1,
+    "distance_forward_km": 6.2,
+    "distance_backward_km": 5.5
+  },
+  {
+    "source": "H01",
+    "target": "H20",
+    "direct_distance_km": 5.9,
+    "distance_forward_km": 9.6,
+    "distance_backward_km": 8.1
+  },
+  {
+    "source": "H02",
+    "target": "H03",
+    "direct_distance_km": 1.9,
+    "distance_forward_km": 4.5,
+    "distance_backward_km": 3.1
+  },
+  {
+    "source": "H02",
+    "target": "H06",
+    "direct_distance_km": 1.4,
+    "distance_forward_km": 2.4,
+    "distance_backward_km": 1.4
+  },
+  {
+    "source": "H02",
+    "target": "H12",
+    "direct_distance_km": 1.6,
+    "distance_forward_km": 3.1,
+    "distance_backward_km": 2.5
+  },
+  {
+    "source": "H02",
+    "target": "H13",
+    "direct_distance_km": 1.1,
+    "distance_forward_km": 1.6,
+    "distance_backward_km": 2.5
+  },
+  {
+    "source": "H02",
+    "target": "H21",
+    "direct_distance_km": 4.2,
+    "distance_forward_km": 6.2,
+    "distance_backward_km": 5.8
+  },
+  {
+    "source": "H03",
+    "target": "H04",
+    "direct_distance_km": 1.2,
+    "distance_forward_km": 3.1,
+    "distance_backward_km": 1.4
+  },
+  {
+    "source": "H03",
+    "target": "H06",
+    "direct_distance_km": 0.9,
+    "distance_forward_km": 1.5,
+    "distance_backward_km": 3.2
+  },
+  {
+    "source": "H03",
+    "target": "H12",
+    "direct_distance_km": 0.5,
+    "distance_forward_km": 0.8,
+    "distance_backward_km": 1.4
+  },
+  {
+    "source": "H03",
+    "target": "H14",
+    "direct_distance_km": 2.0,
+    "distance_forward_km": 2.6,
+    "distance_backward_km": 3.4
+  },
+  {
+    "source": "H04",
+    "target": "H10",
+    "direct_distance_km": 2.2,
+    "distance_forward_km": 4.6,
+    "distance_backward_km": 3.0
+  },
+  {
+    "source": "H04",
+    "target": "H12",
+    "direct_distance_km": 1.6,
+    "distance_forward_km": 1.7,
+    "distance_backward_km": 3.5
+  },
+  {
+    "source": "H04",
+    "target": "H14",
+    "direct_distance_km": 2.4,
+    "distance_forward_km": 3.2,
+    "distance_backward_km": 3.4
+  },
+  {
+    "source": "H04",
+    "target": "H32",
+    "direct_distance_km": 5.0,
+    "distance_forward_km": 9.5,
+    "distance_backward_km": 9.4
+  },
+  {
+    "source": "H05",
+    "target": "H16",
+    "direct_distance_km": 1.3,
+    "distance_forward_km": 1.6,
+    "distance_backward_km": 1.7
+  },
+  {
+    "source": "H05",
+    "target": "H19",
+    "direct_distance_km": 6.6,
+    "distance_forward_km": 9.6,
+    "distance_backward_km": 9.2
+  },
+  {
+    "source": "H06",
+    "target": "H12",
+    "direct_distance_km": 1.0,
+    "distance_forward_km": 1.6,
+    "distance_backward_km": 1.4
+  },
+  {
+    "source": "H06",
+    "target": "H13",
+    "direct_distance_km": 1.9,
+    "distance_forward_km": 3.4,
+    "distance_backward_km": 2.7
+  },
+  {
+    "source": "H06",
+    "target": "H14",
+    "direct_distance_km": 1.5,
+    "distance_forward_km": 2.4,
+    "distance_backward_km": 1.9
+  },
+  {
+    "source": "H07",
+    "target": "H09",
+    "direct_distance_km": 0.9,
+    "distance_forward_km": 1.3,
+    "distance_backward_km": 2.0
+  },
+  {
+    "source": "H07",
+    "target": "H10",
+    "direct_distance_km": 1.9,
+    "distance_forward_km": 4.7,
+    "distance_backward_km": 2.6
+  },
+  {
+    "source": "H07",
+    "target": "H20",
+    "direct_distance_km": 2.9,
+    "distance_forward_km": 3.5,
+    "distance_backward_km": 4.5
+  },
+  {
+    "source": "H08",
+    "target": "H11",
+    "direct_distance_km": 0.2,
+    "distance_forward_km": 0.7,
+    "distance_backward_km": 0.3
+  },
+  {
+    "source": "H08",
+    "target": "H20",
+    "direct_distance_km": 1.9,
+    "distance_forward_km": 2.1,
+    "distance_backward_km": 3.0
+  },
+  {
+    "source": "H09",
+    "target": "H10",
+    "direct_distance_km": 2.6,
+    "distance_forward_km": 4.5,
+    "distance_backward_km": 4.0
+  },
+  {
+    "source": "H09",
+    "target": "H11",
+    "direct_distance_km": 3.7,
+    "distance_forward_km": 5.4,
+    "distance_backward_km": 5.6
+  },
+  {
+    "source": "H09",
+    "target": "H20",
+    "direct_distance_km": 2.0,
+    "distance_forward_km": 2.7,
+    "distance_backward_km": 2.7
+  },
+  {
+    "source": "H10",
+    "target": "H11",
+    "direct_distance_km": 4.5,
+    "distance_forward_km": 6.2,
+    "distance_backward_km": 5.7
+  },
+  {
+    "source": "H10",
+    "target": "H20",
+    "direct_distance_km": 3.8,
+    "distance_forward_km": 5.3,
+    "distance_backward_km": 5.9
+  },
+  {
+    "source": "H10",
+    "target": "H29",
+    "direct_distance_km": 6.0,
+    "distance_forward_km": 8.8,
+    "distance_backward_km": 6.5
+  },
+  {
+    "source": "H10",
+    "target": "H32",
+    "direct_distance_km": 5.7,
+    "distance_forward_km": 9.4,
+    "distance_backward_km": 9.4
+  },
+  {
+    "source": "H11",
+    "target": "H17",
+    "direct_distance_km": 6.2,
+    "distance_forward_km": 9.1,
+    "distance_backward_km": 8.7
+  },
+  {
+    "source": "H11",
+    "target": "H20",
+    "direct_distance_km": 2.0,
+    "distance_forward_km": 2.4,
+    "distance_backward_km": 3.1
+  },
+  {
+    "source": "H11",
+    "target": "H27",
+    "direct_distance_km": 7.4,
+    "distance_forward_km": 13.0,
+    "distance_backward_km": 10.9
+  },
+  {
+    "source": "H12",
+    "target": "H32",
+    "direct_distance_km": 4.7,
+    "distance_forward_km": 8.7,
+    "distance_backward_km": 8.6
+  },
+  {
+    "source": "H13",
+    "target": "H15",
+    "direct_distance_km": 2.3,
+    "distance_forward_km": 3.1,
+    "distance_backward_km": 2.8
+  },
+  {
+    "source": "H15",
+    "target": "H21",
+    "direct_distance_km": 4.4,
+    "distance_forward_km": 6.1,
+    "distance_backward_km": 7.1
+  },
+  {
+    "source": "H15",
+    "target": "H24",
+    "direct_distance_km": 7.2,
+    "distance_forward_km": 11.3,
+    "distance_backward_km": 13.3
+  },
+  {
+    "source": "H17",
+    "target": "H18",
+    "direct_distance_km": 3.5,
+    "distance_forward_km": 6.4,
+    "distance_backward_km": 8.1
+  },
+  {
+    "source": "H17",
+    "target": "H19",
+    "direct_distance_km": 5.1,
+    "distance_forward_km": 9.8,
+    "distance_backward_km": 8.7
+  },
+  {
+    "source": "H17",
+    "target": "H27",
+    "direct_distance_km": 6.0,
+    "distance_forward_km": 9.6,
+    "distance_backward_km": 11.2
+  },
+  {
+    "source": "H18",
+    "target": "H27",
+    "direct_distance_km": 4.9,
+    "distance_forward_km": 10.4,
+    "distance_backward_km": 11.1
+  },
+  {
+    "source": "H21",
+    "target": "H22",
+    "direct_distance_km": 1.7,
+    "distance_forward_km": 3.3,
+    "distance_backward_km": 2.1
+  },
+  {
+    "source": "H21",
+    "target": "H23",
+    "direct_distance_km": 2.7,
+    "distance_forward_km": 5.5,
+    "distance_backward_km": 4.1
+  },
+  {
+    "source": "H21",
+    "target": "H32",
+    "direct_distance_km": 3.9,
+    "distance_forward_km": 6.1,
+    "distance_backward_km": 4.6
+  },
+  {
+    "source": "H22",
+    "target": "H23",
+    "direct_distance_km": 1.0,
+    "distance_forward_km": 4.2,
+    "distance_backward_km": 2.1
+  },
+  {
+    "source": "H25",
+    "target": "H26",
+    "direct_distance_km": 3.9,
+    "distance_forward_km": 7.2,
+    "distance_backward_km": 7.7
+  },
+  {
+    "source": "H25",
+    "target": "H29",
+    "direct_distance_km": 2.5,
+    "distance_forward_km": 3.7,
+    "distance_backward_km": 4.4
+  },
+  {
+    "source": "H25",
+    "target": "H31",
+    "direct_distance_km": 3.2,
+    "distance_forward_km": 4.6,
+    "distance_backward_km": 4.5
+  },
+  {
+    "source": "H25",
+    "target": "H32",
+    "direct_distance_km": 2.8,
+    "distance_forward_km": 3.5,
+    "distance_backward_km": 3.5
+  },
+  {
+    "source": "H26",
+    "target": "H27",
+    "direct_distance_km": 2.3,
+    "distance_forward_km": 5.4,
+    "distance_backward_km": 4.3
+  },
+  {
+    "source": "H26",
+    "target": "H29",
+    "direct_distance_km": 2.8,
+    "distance_forward_km": 5.7,
+    "distance_backward_km": 6.2
+  },
+  {
+    "source": "H26",
+    "target": "H31",
+    "direct_distance_km": 4.7,
+    "distance_forward_km": 6.0,
+    "distance_backward_km": 6.3
+  },
+  {
+    "source": "H28",
+    "target": "H30",
+    "direct_distance_km": 5.9,
+    "distance_forward_km": 9.2,
+    "distance_backward_km": 9.9
+  },
+  {
+    "source": "H28",
+    "target": "H31",
+    "direct_distance_km": 2.9,
+    "distance_forward_km": 4.2,
+    "distance_backward_km": 3.7
+  },
+  {
+    "source": "H29",
+    "target": "H32",
+    "direct_distance_km": 2.6,
+    "distance_forward_km": 4.2,
+    "distance_backward_km": 3.4
+  },
+  {
+    "source": "H30",
+    "target": "H31",
+    "direct_distance_km": 5.2,
+    "distance_forward_km": 8.5,
+    "distance_backward_km": 8.6
+  }
 ]
