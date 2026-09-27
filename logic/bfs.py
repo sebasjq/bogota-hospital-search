@@ -6,30 +6,26 @@ def bfs(graph, origin, destination):
     if origin not in graph or destination not in graph:
         raise ValueError("Origin or destination does not exist")
 
-    if origin == destination:
-        return [origin]
-
-    queue = deque([[origin]]) # Cola FIFO...
+    queue = deque([(0, [origin])]) # Cola FIFO con distancia acumulada y camino
     expanded = set()
 
     while queue:
-        path = queue.popleft()
+        distance, path = queue.popleft()
         current = path[-1]
 
+        if current == destination: # Si el nodo actual es el destino, se retorna el camino encontrado.
+            return path, distance
+        
         if current in expanded: # Si ya se ha expandido este nodo, se omite para evitar ciclos.
             continue  
 
         for neighbor in graph[current]:
 
-            if neighbor in expanded: # Si el vecino es un nodo que ya ha sido expandido, se omite para evitar ciclos.
-                continue
+            if neighbor not in expanded: # Si el vecino es un nodo que no ha sido expandido, se crea un nuevo camino y se agrega a la cola.
 
-            new_path = path + [neighbor] # Se construye el nuevo camino agregando el vecino al camino actual.
-
-            if neighbor == destination: # El camino encontrado es el destino...
-                return new_path # ... se retorna el camino completo desde el origen hasta el destino.
-
-            queue.append(new_path) # Se agrega el nuevo camino a la cola para su posterior exploración.
+                new_path = path + [neighbor] # Se construye el nuevo camino agregando el vecino al camino actual.
+                new_distance = distance + graph[current][neighbor] # Se calcula la nueva distancia acumulada sumando la distancia al vecino.
+                queue.append((new_distance, new_path)) # Se agrega el nuevo camino a la cola para su posterior exploración.
 
         expanded.add(current)  # Ya examinamos todos los vecinos de current
 
@@ -38,5 +34,5 @@ def bfs(graph, origin, destination):
 
 if __name__ == "__main__":
     graph = load_graph()
-    route = bfs(graph, "H30", "H29")
+    route = bfs(graph, "H19", "H24")
     print(route)

@@ -13,15 +13,16 @@ def load_graph():
     graph = {}
 
     for hospital in hospitals:
-        hospital_id = hospital["id"] # Se obtiene el ID del hospital.
-        graph[hospital_id] = [] # Segun el ID del hospital, se crea un nodo en el grafo con una lista vacía de conexiones.
+        graph[hospital["id"]] = {} # Segun el ID del hospital, se crea un nodo en el grafo con una lista vacía de conexiones.
 
     # Toma el par de conexiones del archivo connections.json
     for connection in connections:
-        source = connection["source"] # Obtiene el hospital de origen y destino de la conexión...
+        source = connection["source"] # Obtiene el hospital de origen...
         target = connection["target"] # ... y el hospital de destino.
 
-        graph[source].append(target) # Adjunta en el nodo de origen el nodo de destino...
-        graph[target].append(source) # ... y en el nodo de destino el nodo de origen, ya que es un grafo no dirigido.
+        # Se usa doble corchete para entrar primero a la clave del nivel
+        # exterior (el ID del hospital de origen) y luego a la clave del nivel interior, que es el ID del hospital destino.
+        graph[source][target] = connection["distance_forward_km"] # Adjunta en el nodo de origen el nodo de destino...
+        graph[target][source] = connection["distance_backward_km"] # ... y en el nodo de destino el nodo de origen, ya que es un grafo no dirigido.
 
     return graph
