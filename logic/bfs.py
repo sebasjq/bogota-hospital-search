@@ -1,5 +1,5 @@
 from collections import deque
-from graph import load_graph # Cargar el grafo de hospitales y sus conexiones desde archivos JSON.
+from graph import load_graph
 
 
 def bfs(graph, origin, destination):
@@ -9,26 +9,32 @@ def bfs(graph, origin, destination):
     if origin == destination:
         return [origin]
 
-    queue = deque([[origin]])
-    visited = {origin}
+    queue = deque([[origin]]) # Cola FIFO...
+    expanded = set()
 
-    while queue: # Mientras haya rutas por explorar.
-        path = queue.popleft() # Sacar la primera ruta de la cola.
-        current = path[-1] # Último hospital de esa ruta.
+    while queue:
+        path = queue.popleft()
+        current = path[-1]
+
+        if current in expanded: # Si ya se ha expandido este nodo, se omite para evitar ciclos.
+            continue  
 
         for neighbor in graph[current]:
-            if neighbor in visited:
+
+            if neighbor in expanded: # Si el vecino es un nodo que ya ha sido expandido, se omite para evitar ciclos.
                 continue
 
-            new_path = path + [neighbor]
+            new_path = path + [neighbor] # Se construye el nuevo camino agregando el vecino al camino actual.
 
-            if neighbor == destination:
-                return new_path      # Destino descubierto: terminamos.
+            if neighbor == destination: # El camino encontrado es el destino...
+                return new_path # ... se retorna el camino completo desde el origen hasta el destino.
 
-            visited.add(neighbor)
-            queue.append(new_path)   # Agregar la nueva ruta al final.
+            queue.append(new_path) # Se agrega el nuevo camino a la cola para su posterior exploración.
 
-    return None                       # No existe una ruta.
+        expanded.add(current)  # Ya examinamos todos los vecinos de current
+
+    return None
+
 
 if __name__ == "__main__":
     graph = load_graph()
