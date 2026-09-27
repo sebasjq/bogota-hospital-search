@@ -34,5 +34,5 @@ def bfs(graph, origin, destination):
 
 if __name__ == "__main__":
     graph = load_graph()
-    route = bfs(graph, "H19", "H24")
+    route = bfs(graph, "H16", "H23")
     print(route)

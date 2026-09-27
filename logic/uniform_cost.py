@@ -35,5 +35,5 @@ def uniform_cost(graph, origin, destination):
 
 if __name__ == "__main__":
     graph = load_graph()
-    result = uniform_cost(graph, "H19", "H24")
+    result = uniform_cost(graph, "H16", "H23")
     print(result)
