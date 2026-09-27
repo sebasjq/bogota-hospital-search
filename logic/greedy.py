@@ -57,5 +57,5 @@ if __name__ == "__main__":
 
     # Se requiere enviarle todos los hospitales con su longitud y latitud 
     # para que pueda calcular la distancia directa entre ellos y el destino.
-    result = greedy(graph, hospitals, "H30", "H29")
+    result = greedy(graph, hospitals, "H16", "H23")
     print(result)
