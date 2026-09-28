@@ -108,6 +108,18 @@
     "distance_backward_km": 9.203
   },
   {
+    "source": "H05",
+    "target": "H17",
+    "distance_forward_km": 14.167,
+    "distance_backward_km": 15.672
+  },
+  {
+    "source": "H17",
+    "target": "H01",
+    "distance_forward_km": 12.897,
+    "distance_backward_km": 12.664
+  },
+  {
     "source": "H06",
     "target": "H12",
     "distance_forward_km": 1.63,
@@ -151,6 +163,12 @@
   },
   {
     "source": "H08",
+    "target": "H01",
+    "distance_forward_km": 7.262,
+    "distance_backward_km": 7.872
+  },
+  {
+    "source": "H08",
     "target": "H20",
     "distance_forward_km": 2.119,
     "distance_backward_km": 3.001
@@ -190,6 +208,12 @@
     "target": "H29",
     "distance_forward_km": 8.776,
     "distance_backward_km": 6.538
+  },
+  {
+    "source": "H29",
+    "target": "H11",
+    "distance_forward_km": 9.894,
+    "distance_backward_km": 12.726
   },
   {
     "source": "H10",
@@ -288,6 +312,12 @@
     "distance_backward_km": 7.698
   },
   {
+    "source": "H26",
+    "target": "H11",
+    "distance_forward_km": 13.226,
+    "distance_backward_km": 14.48
+  },
+  {
     "source": "H25",
     "target": "H29",
     "distance_forward_km": 3.742,
@@ -346,5 +376,11 @@
     "target": "H31",
     "distance_forward_km": 8.461,
     "distance_backward_km": 8.571
+  },
+  {
+    "source": "H30",
+    "target": "H25",
+    "distance_forward_km": 8.854,
+    "distance_backward_km": 9.747
   }
 ]

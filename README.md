@@ -4,8 +4,8 @@ Interfaz local para seleccionar hospitales de Bogotá y preparar la integración
 
 ## Estado actual
 
-- `interface/map.js`: visor SVG offline, zoom, desplazamiento y marcadores.
-- `interface/app.js`: carga hospitales, sincroniza selectores y selección sobre el mapa.
+- `interface/js/map.js`: visor SVG offline, zoom, desplazamiento y marcadores.
+- `interface/js/app.js`: carga hospitales, sincroniza selectores y selección sobre el mapa.
 - `data/hospitals.json`: fuente de verdad de hospitales en WGS84 (`latitude`, `longitude`).
 - `data/connections.json`: reservado para la red/grafo futuro.
 - `logic/search.py`: reservado para BFS, Dijkstra, A* u otro algoritmo.
@@ -15,7 +15,7 @@ La base actual es deliberadamente esquemática. No debe confundirse con datos OS
 ## Activar la vista 3D remota
 
 1. Crear una clave de desarrollo en MapTiler Cloud.
-2. Abrir `interface/config.js` y asignarla a `mapTilerKey`.
+2. Abrir `interface/js/config.js` y asignarla a `mapTilerKey`.
 3. Ejecutar el servidor local. La aplicación iniciará en 2D y quedará centrada y limitada a Bogotá.
 4. Pulsar **Activar 3D** para animar la cámara, inclinar la vista y mostrar edificios extruidos. El mismo botón permite volver a 2D.
 
@@ -51,8 +51,11 @@ data/
 	hospitals.json          # datos de dominio existentes
 	map/                    # GeoJSON o MBTiles locales generados
 	graph/                  # red vial normalizada para IA
-interface/
-	index.html app.js map.js styles.css
+	interface/
+		index.html
+		pages/tree.html
+		css/styles.css theme.css
+		js/app.js map.js config.js tree.js tree_data.js
 logic/
 	search.py               # algoritmos, fase posterior
 tools/                    # scripts de descarga/conversión
