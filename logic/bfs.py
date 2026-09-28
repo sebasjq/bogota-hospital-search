@@ -47,9 +47,24 @@ def bfs(graph, origin, destination):
 
     return None
 
-
+# Ejecución principal para probar la función bfs y generar la visualización del árbol de expansión
 if __name__ == "__main__":
+    
+    from scripts.search_tree_graph import search_tree_graph
+
     graph = load_graph()
-    route = bfs(graph, "H30", "H29")
-    print(route)
+    origin, destination = "H30", "H29"
+    result = bfs(graph, origin, destination)
+
+    if result is not None:
+        path, distance, tree_edges, expanded = result
+        print(path, distance)
+
+        search_tree_graph({
+            "origin": origin,
+            "path": path,
+            "distance": distance,
+            "tree_edges": tree_edges,
+            "expanded": expanded,
+        })
     
