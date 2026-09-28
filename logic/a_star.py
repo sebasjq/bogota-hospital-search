@@ -21,7 +21,9 @@ def a_star(graph, hospitals, origin, destination):
     # y h(n) representa la distancia directa desde el nodo actual hasta el destino (heurística).
     queue = [(initial_heuristic, 0, [origin])] # (f(n), g(n), camino)
 
-    expanded = set()
+    expanded = {}
+
+    tree_edges = []
 
     while queue:
 
@@ -29,7 +31,7 @@ def a_star(graph, hospitals, origin, destination):
         current = path[-1]
 
         if current == destination:
-            return path, distance
+            return path, distance, tree_edges, expanded
 
         if current in expanded:
             continue
@@ -38,19 +40,30 @@ def a_star(graph, hospitals, origin, destination):
 
             if neighbor not in expanded:
                 new_path = path + [neighbor]
-
                 new_distance = distance + graph[current][neighbor] # g(n) = distancia acumulada desde el origen hasta el vecino
+
                 new_heuristic = direct_distance_km(hospitals[neighbor], hospitals[destination]) # h(n) = distancia directa desde el vecino hasta el destino
+                heuristic_function = new_distance + new_heuristic # f(n) = g(n) + h(n)
+                
+                tree_edges.append({
+                    "parent": path.copy(),
+                    "child": new_path.copy(),
+                    "g": new_distance,
+                    "h": new_heuristic,
+                    "f": heuristic_function
+                })
+                
+                heapq.heappush(queue, (heuristic_function, new_distance, new_path))
 
-                priority = new_distance + new_heuristic # f(n) = g(n) + h(n)
-                heapq.heappush(queue, (priority, new_distance, new_path))
-
-        expanded.add(current)
+        expanded[current] = len(expanded) + 1
 
     return None
 
 
 if __name__ == "__main__":
+
+    from scripts.search_tree_graph import search_tree_graph
+
     graph = load_graph()
 
     data_folder = Path(__file__).resolve().parents[1] / "data"
@@ -59,5 +72,18 @@ if __name__ == "__main__":
 
     hospitals = {hospital["id"]: hospital for hospital in hospital_list}
 
-    result = a_star(graph, hospitals, "H16", "H23")
-    print(result)
+    origin, destination = "H30", "H29"
+    result = a_star(graph, hospitals, origin, destination)
+
+    if result is not None:
+        path, distance, tree_edges, expanded = result
+        print(path, distance)
+
+        search_tree_graph({
+            "origin": origin,
+            "path": path,
+            "distance": distance,
+            "heuristic": direct_distance_km(hospitals[origin], hospitals[destination]),
+            "tree_edges": tree_edges,
+            "expanded": expanded,
+        })

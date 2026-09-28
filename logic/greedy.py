@@ -17,7 +17,9 @@ def greedy(graph, hospitals, origin, destination):
     initial_heuristic =  direct_distance_km(hospitals[origin], hospitals[destination]) # Distancia directa desde el origen hasta el destino
     queue = [(initial_heuristic, 0, [origin])] # Heap: cada elemento contiene (distancia directa al destino, distancia acumulada, camino)
 
-    expanded = set() # Conjunto de nodos ya expandidos para evitar ciclos
+    expanded = {} # Conjunto de nodos ya expandidos para evitar ciclos
+
+    tree_edges = []
 
     while queue:
 
@@ -26,7 +28,7 @@ def greedy(graph, hospitals, origin, destination):
         current = path[-1] # Nodo actual es el último nodo del camino
 
         if current == destination: # Si el nodo actual es el destino, se retorna el camino encontrado
-            return path, distance
+            return path, distance, tree_edges, expanded
 
         if current in expanded: # Si ya se ha expandido este nodo, se omite para evitar ciclos.
             continue
@@ -38,13 +40,24 @@ def greedy(graph, hospitals, origin, destination):
                 new_distance = distance + graph[current][neighbor] # Se calcula la nueva distancia acumulada sumando la distancia al vecino.
 
                 new_heuristic = direct_distance_km(hospitals[neighbor], hospitals[destination]) # Calcula la distancia directa desde el vecino hasta el destino
+
+                tree_edges.append({
+                    "parent": path.copy(),
+                    "child": new_path.copy(),
+                    "g": new_distance,
+                    "h": new_heuristic
+                }) # Se agrega la arista al árbol de expansión
+
                 heapq.heappush(queue, (new_heuristic, new_distance, new_path)) # Se agrega el nuevo camino a la cola de prioridad para su posterior exploración.
 
-        expanded.add(current) # Se marca el nodo actual como expandido para no volver a procesarlo
+        expanded[current] = len(expanded) + 1  # Se agrega el nodo actual al diccionario expanded con su número de expansión
 
     return None
 
 if __name__ == "__main__":
+
+    from scripts.search_tree_graph import search_tree_graph
+
     graph = load_graph()
 
     # Leer la lista de hospitales.
@@ -55,7 +68,18 @@ if __name__ == "__main__":
     # Crear un diccionario para buscar cada hospital por su ID.
     hospitals = {hospital["id"]: hospital for hospital in hospital_list}
 
-    # Se requiere enviarle todos los hospitales con su longitud y latitud 
-    # para que pueda calcular la distancia directa entre ellos y el destino.
-    result = greedy(graph, hospitals, "H16", "H23")
-    print(result)
+    origin, destination = "H30", "H29"
+    result = greedy(graph, hospitals, origin, destination)
+
+    if result is not None:
+        path, distance, tree_edges, expanded = result
+        print(path, distance)
+
+        search_tree_graph({
+            "origin": origin,
+            "path": path,
+            "distance": distance,
+            "heuristic": direct_distance_km(hospitals[origin], hospitals[destination]),
+            "tree_edges": tree_edges,
+            "expanded": expanded,
+        })
