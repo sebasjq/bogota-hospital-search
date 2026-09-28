@@ -6,15 +6,20 @@ function renderTree(result) {
             id(result.path.slice(0, index + 1)))
     );
 
-    function makeNode(path, g) {
+    function makeNode(path, g, h = null) {
 
         const onRoute = routeNodes.has(id(path));
 
         return {
             id: id(path),
-            label: `${path.at(-1)}\ng=${g.toFixed(3)}`,
+
+            label: h == null
+                ? `${path.at(-1)}\ng=${g.toFixed(3)}`
+                : `${path.at(-1)}\ng=${g.toFixed(3)}\nh=${h.toFixed(3)}`,
+
             title: path.join(" → "),
             level: path.length - 1,
+
             color: onRoute
                 ? {
                     background: "#d8f3df",
@@ -32,11 +37,11 @@ function renderTree(result) {
     }
 
     const root = [result.origin];
-    const nodes = new Map([[id(root), makeNode(root, 0)]]);
+    const nodes = new Map([[id(root), makeNode(root, 0, result.heuristic)]]);
     const edges = [];
 
     for (const edge of result.tree_edges) {
-        nodes.set(id(edge.child), makeNode(edge.child, edge.g));
+        nodes.set(id(edge.child), makeNode(edge.child, edge.g, edge.h));
 
         const onRoute = routeNodes.has(id(edge.child));
 
