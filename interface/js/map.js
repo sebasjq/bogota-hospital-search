@@ -1,15 +1,17 @@
 const mapView = (() => {
 	const bounds = { west: -74.23, east: -73.98, south: 4.45, north: 4.82 };
 	let svg; let viewport; let remoteMap; let remoteMarkers = new Map(); let localMarkers = new Map(); let hospitalPositions = new Map(); let remoteMode = "2d"; let scale = 1; let rotation = 0; let offsetX = 0; let offsetY = 0; let dragStart; let pendingTransform; let transformFrame;
+	let connectionLayer; let routeLayer; let routeAnimationFrame;
 	function project(longitude, latitude) { return { x: ((longitude - bounds.west) / (bounds.east - bounds.west)) * 1000, y: ((bounds.north - latitude) / (bounds.north - bounds.south)) * 1400 }; }
 	function transform() { viewport.setAttribute("transform", `translate(${offsetX} ${offsetY}) rotate(${rotation} 500 700) scale(${scale})`); }
 	function scheduleTransform() { pendingTransform = true; if (transformFrame) return; transformFrame = requestAnimationFrame(() => { transformFrame = undefined; if (pendingTransform) { pendingTransform = false; transform(); } }); }
 	function line(points, className) {
 		const element = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
 		element.setAttribute("points", points.map(([longitude, latitude]) => { const point = project(longitude, latitude); return `${point.x},${point.y}`; }).join(" "));
+		if (className.includes("calculated-route")) element.setAttribute("pathLength", "1");
 		element.setAttribute("class", className); return element;
 	}
-	function init(container, hospitals, onSelect) {
+	function init(container, hospitals, connections, onSelect) {
 		hospitalPositions = new Map(hospitals.map(hospital => [hospital.id, { longitude: hospital.longitude, latitude: hospital.latitude }]));
 		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 1000 1400"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Mapa local esquemático de Bogotá");
 		viewport = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -18,6 +20,15 @@ const mapView = (() => {
 		const avenues = [[[-74.20, 4.65], [-73.99, 4.68]], [[-74.18, 4.59], [-74.00, 4.62]], [[-74.19, 4.54], [-74.01, 4.57]], [[-74.10, 4.47], [-74.08, 4.80]], [[-74.05, 4.48], [-74.06, 4.80]], [[-74.15, 4.48], [-74.14, 4.80]], [[-74.20, 4.71], [-74.00, 4.72]], [[-74.12, 4.45], [-74.12, 4.82]]];
 		avenues.forEach(path => viewport.appendChild(line(path, "avenue")));
 		[["Suba", -74.11, 4.77], ["Engativá", -74.14, 4.70], ["Chapinero", -74.06, 4.66], ["Kennedy", -74.16, 4.61], ["Usme", -74.10, 4.50]].forEach(([text, longitude, latitude]) => { const point = project(longitude, latitude); const label = document.createElementNS("http://www.w3.org/2000/svg", "text"); label.setAttribute("x", point.x); label.setAttribute("y", point.y); label.textContent = text; label.setAttribute("class", "district-label"); viewport.appendChild(label); });
+		connectionLayer = document.createElementNS("http://www.w3.org/2000/svg", "g"); connectionLayer.setAttribute("class", "connection-layer");
+		connections.forEach(connection => {
+			const source = hospitalPositions.get(connection.source);
+			const target = hospitalPositions.get(connection.target);
+			if (source && target) connectionLayer.appendChild(line([[source.longitude, source.latitude], [target.longitude, target.latitude]], "hospital-connection"));
+		});
+		routeLayer = document.createElementNS("http://www.w3.org/2000/svg", "g"); routeLayer.setAttribute("class", "route-layer");
+		viewport.appendChild(connectionLayer);
+		viewport.appendChild(routeLayer);
 		hospitals.forEach(hospital => { const point = project(hospital.longitude, hospital.latitude); const group = document.createElementNS("http://www.w3.org/2000/svg", "g"); group.setAttribute("class", "hospital-marker"); group.dataset.id = hospital.id; group.setAttribute("role", "button"); group.setAttribute("tabindex", "0"); group.setAttribute("aria-label", hospital.name); group.setAttribute("transform", `translate(${point.x} ${point.y})`); group.innerHTML = '<g class="marker-content"><rect class="marker-backdrop" x="-12" y="-12" width="24" height="24" rx="6"></rect><path class="marker-hospital" d="M-3.5-9h7v5.5H9v7H3.5V9h-7V3.5H-9v-7h5.5z"></path><path class="marker-location" d="M0 11C-1.7 8.2-7 3.4-7-1.5A7 7 0 1 1 7-1.5C7 3.4 1.7 8.2 0 11Zm0-9.2A2.8 2.8 0 1 0 0-3.8a2.8 2.8 0 0 0 0 5.6Z"></path></g>'; const selectMarker = () => onSelect(hospital.id); group.addEventListener("click", selectMarker); group.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectMarker(); } }); localMarkers.set(hospital.id, group); viewport.appendChild(group); });
 		svg.appendChild(viewport); container.appendChild(svg);
 		svg.addEventListener("wheel", event => { event.preventDefault(); setZoom(scale + (event.deltaY < 0 ? 0.15 : -0.15)); }, { passive: false });
@@ -41,6 +52,50 @@ const mapView = (() => {
 		offsetY = 700 - point.y * scale;
 		scheduleTransform();
 	}
+	function setRoute(path, geometry = null) {
+		const positions = path.map(id => hospitalPositions.get(id)).filter(Boolean);
+		const coordinates = Array.isArray(geometry) && geometry.length > 1
+			? geometry
+			: positions.map(position => [position.longitude, position.latitude]);
+		if (routeAnimationFrame) cancelAnimationFrame(routeAnimationFrame);
+		if (remoteMap) {
+			if (!remoteMap.isStyleLoaded()) return;
+			const source = remoteMap.getSource("calculated-route");
+			if (coordinates.length < 2) {
+				if (source) source.setData({ type: "Feature", geometry: null });
+				return;
+			}
+			const data = { type: "Feature", geometry: { type: "LineString", coordinates: [coordinates[0], coordinates[0]] } };
+			if (source) source.setData(data);
+			else {
+				remoteMap.addSource("calculated-route", { type: "geojson", data });
+				remoteMap.addLayer({ id: "calculated-route-line", type: "line", source: "calculated-route", paint: { "line-color": "#007aff", "line-width": 6, "line-opacity": 0.9, "line-blur": 0.3 } });
+			}
+			if (coordinates.length < 2) return;
+			const startTime = performance.now();
+			const duration = 1200;
+			const animateRemoteRoute = timestamp => {
+				const progress = Math.min(1, (timestamp - startTime) / duration);
+				const segment = progress * (coordinates.length - 1);
+				const index = Math.min(Math.floor(segment), coordinates.length - 2);
+				const fraction = progress === 1 ? 1 : segment - index;
+				const visibleCoordinates = coordinates.slice(0, index + 1).map(point => [point[0], point[1]]);
+				const current = coordinates[index];
+				const next = coordinates[index + 1];
+				visibleCoordinates.push([current[0] + (next[0] - current[0]) * fraction, current[1] + (next[1] - current[1]) * fraction]);
+				remoteMap.getSource("calculated-route").setData({ type: "Feature", geometry: { type: "LineString", coordinates: visibleCoordinates } });
+				if (progress < 1) routeAnimationFrame = requestAnimationFrame(animateRemoteRoute);
+			};
+			routeAnimationFrame = requestAnimationFrame(animateRemoteRoute);
+			return;
+		}
+		if (!routeLayer) return;
+		routeLayer.replaceChildren();
+		if (coordinates.length > 1) {
+			routeLayer.appendChild(line(coordinates, "calculated-route-halo"));
+			routeLayer.appendChild(line(coordinates, "calculated-route"));
+		}
+	}
 	function mark(id, type) {
 		if (remoteMap) {
 			remoteMarkers.forEach((marker, markerId) => {
@@ -61,7 +116,7 @@ const mapView = (() => {
 			}
 		});
 	}
-	function enableRemoteMap(container, hospitals, key, onSelect) {
+	function enableRemoteMap(container, hospitals, connections, key, onSelect) {
 		if (remoteMap) return Promise.resolve();
 		hospitalPositions = new Map(hospitals.map(hospital => [hospital.id, { longitude: hospital.longitude, latitude: hospital.latitude }]));
 		container.replaceChildren();
@@ -74,9 +129,39 @@ const mapView = (() => {
 			renderWorldCopies: false,
 			antialias: false
 		});
+		remoteMap.on("styleimagemissing", event => {
+			if (remoteMap.hasImage(event.id)) return;
+			remoteMap.addImage(event.id, {
+				width: 1,
+				height: 1,
+				data: new Uint8Array(4)
+			});
+		});
 		return new Promise((resolve, reject) => {
 			remoteMap.once("error", event => { if (event.error) reject(event.error); });
 		remoteMap.on("load", () => {
+			remoteMap.addSource("hospital-connections", {
+				type: "geojson",
+				data: {
+					type: "FeatureCollection",
+					features: connections.map(connection => {
+						const source = hospitalPositions.get(connection.source);
+						const target = hospitalPositions.get(connection.target);
+						if (!source || !target) return null;
+						return {
+						type: "Feature",
+						geometry: {
+							type: "LineString",
+							coordinates: [
+								[source.longitude, source.latitude],
+								[target.longitude, target.latitude]
+							]
+						}
+						};
+					}).filter(Boolean)
+				}
+			});
+			remoteMap.addLayer({ id: "hospital-connections-line", type: "line", source: "hospital-connections", paint: { "line-color": "#52717a", "line-width": 1.5, "line-opacity": 0.62, "line-dasharray": [2, 2] } });
 			const styleLayers = remoteMap.getStyle().layers || [];
 			const buildingLayer = styleLayers.find(layer => layer.type === "fill" && layer['source-layer'] === "building");
 			if (buildingLayer) {
@@ -123,5 +208,5 @@ const mapView = (() => {
 	}
 	function isRemote() { return Boolean(remoteMap); }
 	function getMode() { return remoteMode; }
-	return { init, setZoom, zoomIn, zoomOut, rotate, reset, focusHospital, mark, enableRemoteMap, setRemoteMode, isRemote, getMode };
+	return { init, setZoom, zoomIn, zoomOut, rotate, reset, focusHospital, setRoute, mark, enableRemoteMap, setRemoteMode, isRemote, getMode };
 })();

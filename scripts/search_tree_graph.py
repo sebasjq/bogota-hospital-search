@@ -14,5 +14,5 @@ def search_tree_graph(result):
         encoding="utf-8",
     )
 
-    page = (interface / "pages" / "tree.html").resolve().as_uri()
+    page = (interface / "index.html").resolve().as_uri() + "#tree"
     webbrowser.open(page)

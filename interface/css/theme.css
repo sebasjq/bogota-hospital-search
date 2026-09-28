@@ -40,10 +40,10 @@
 	--glass-inset:            inset 0 1px 0 rgba(255, 255, 255, 0.10);
 
 	/* Blur */
-	--blur-base:              48px;
+	--blur-base:              24px;
 	--blur-control:           24px;
-	--blur-deep:              72px;
-	--blur-soft:              16px;
+	--blur-deep:              24px;
+	--blur-soft:              24px;
 
 	/* Radios */
 	--radius-panel:           22px;

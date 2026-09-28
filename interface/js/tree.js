@@ -1,4 +1,7 @@
+let treeNetwork;
+
 function renderTree(result) {
+    if (treeNetwork) treeNetwork.destroy();
     const id = path => JSON.stringify(path);
 
     const expansionOrder = new Map(
@@ -35,17 +38,24 @@ function renderTree(result) {
 
             color: onRoute
                 ? {
-                    background: "#d8f3df",
-                    border: "#198754",
-                    highlight: { background: "#d8f3df", border: "#198754" }
+                    background: "rgba(232, 244, 255, 0.96)",
+                    border: "#007aff",
+                    highlight: { background: "#dceeff", border: "#006ee6" }
                 }
                 : {
-                    background: "#e7f0ff",
-                    border: "#528ac7",
-                    highlight: { background: "#e7f0ff", border: "#528ac7" }
+                    background: "rgba(248, 252, 255, 0.9)",
+                    border: "#8eacc4",
+                    highlight: { background: "#edf6ff", border: "#4d91cf" }
                 },
-            borderWidth: onRoute ? 3 : 1,
-            borderWidthSelected: 3
+            borderWidth: onRoute ? 2 : 1,
+            borderWidthSelected: 2,
+            shadow: {
+                enabled: true,
+                color: "rgba(35, 57, 62, 0.12)",
+                size: 7,
+                x: 0,
+                y: 2
+            }
         };
     }
 
@@ -66,8 +76,9 @@ function renderTree(result) {
             id: `edge-${edges.length}`,
             from: id(edge.parent),
             to: id(edge.child),
-            color: onRoute ? "#198754" : "#9ca3af",
-            width: onRoute ? 3 : 1
+            color: onRoute ? "#4d91cf" : "#a6bbca",
+            width: onRoute ? 2 : 1.25,
+            smooth: { type: "cubicBezier", forceDirection: "vertical", roundness: 0.35 }
         });
     }   
 
@@ -76,7 +87,7 @@ function renderTree(result) {
         id, color, width
     }));
 
-    const network = new vis.Network(
+    treeNetwork = new vis.Network(
         document.getElementById("tree"),
         { nodes: [...nodes.values()], edges: edgeData },
         {
@@ -84,9 +95,11 @@ function renderTree(result) {
                 shape: "circle",
                 margin: 14,
                 font: {
-                    size: 14,
+                    size: 13,
+                    face: "DM Sans",
+                    color: "rgba(27, 43, 58, 0.82)",
                     multi: "html",
-                    bold: { size: 22 }
+                    bold: { size: 15, color: "#007aff" }
                 }
             },
 
@@ -99,12 +112,14 @@ function renderTree(result) {
                 }
             },
 
-            interaction: { selectConnectedEdges: false },
+            interaction: { selectConnectedEdges: false, hover: true, zoomView: true },
             physics: false
         }
     );
 
-    network.on("click", ({ nodes: selected }) => {
+    window.treeNetwork = treeNetwork;
+
+    treeNetwork.on("click", ({ nodes: selected }) => {
         edgeData.update(originalStyles);
 
         if (selected.length === 0) return;
@@ -112,20 +127,31 @@ function renderTree(result) {
         const nodeId = selected[0];
 
         edgeData.update(
-            network.getConnectedEdges(nodeId).map(edgeId => {
+                    treeNetwork.getConnectedEdges(nodeId).map(edgeId => {
                 const edge = edgeData.get(edgeId);
                 const onRoute =
                     routeNodes.has(edge.from) && routeNodes.has(edge.to);
 
                 return {
                     id: edgeId,
-                    color: onRoute ? "#198754" : "#528ac7",
-                    width: 4
+                    color: onRoute ? "#007aff" : "#4d91cf",
+                    width: 2.5
                 };
             })
         );
     });
 }
+
+window.zoomTree = factor => {
+    if (!treeNetwork) return;
+    const scale = Math.min(2.5, Math.max(0.25, treeNetwork.getScale() * factor));
+    treeNetwork.moveTo({ scale, animation: { duration: 240, easingFunction: "easeInOutQuad" } });
+};
+
+window.fitTree = () => {
+    if (!treeNetwork) return;
+    treeNetwork.fit({ animation: { duration: 320, easingFunction: "easeInOutQuad" } });
+};
 
 // Permite pasarle un resultado después, desde la app.
 window.renderTree = renderTree;

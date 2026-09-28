@@ -13,6 +13,7 @@
 	--route-body-size: 14px;
 	--route-label-size: 15px;
 	--control-icon-size: 24px;
+	--map-controls-width: 232px;
 }
 
 html,
@@ -90,13 +91,13 @@ body {
 	min-height: 48px;
 	padding: 8px 14px 8px 8px;
 
-	border: 1px solid rgba(255, 255, 255, 0.62);
+	border: 1px solid rgba(255, 255, 255, 0.42);
 	border-radius: 999px;
 	background: rgba(255, 255, 255, 0.58);
 	color: var(--apple-secondary-label);
 	box-shadow: 0 8px 24px rgba(35, 57, 62, 0.16);
-	backdrop-filter: blur(18px);
-	-webkit-backdrop-filter: blur(18px);
+	backdrop-filter: blur(var(--blur-control));
+	-webkit-backdrop-filter: blur(var(--blur-control));
 
 	font-size: 14px;
 	font-weight: 400;
@@ -107,15 +108,16 @@ body {
 	overflow: hidden;
 	opacity: 0;
 	pointer-events: none;
-	transform: translate(-50%, calc(-100% - 32px));
+	transform: translateX(-50%);
+	top: -32px;
 	transition:
-		opacity 240ms ease,
-		transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+		opacity 180ms ease,
+		top 240ms ease;
 }
 
 .hospital-notice.is-visible {
 	opacity: 1;
-	transform: translate(-50%, 0);
+	top: 16px;
 }
 
 .hospital-notice-icon {
@@ -136,6 +138,18 @@ body {
 		"wght" 1000,
 		"GRAD" 0,
 		"opsz" 24;
+}
+
+.hospital-notice-icon.is-error {
+	color: #d62839;
+}
+
+.hospital-notice-icon.is-model {
+	color: #007aff;
+}
+
+.hospital-notice-icon.is-loading {
+	color: #007aff;
 }
 
 .hospital-notice-text {
@@ -202,7 +216,7 @@ body {
 	margin: 0 0 4px;
 	color: var(--apple-label);
 	font-size: var(--route-heading-size);
-	font-weight: 500;
+	font-weight: 600;
 	letter-spacing: -0.01em;
 }
 
@@ -423,12 +437,12 @@ body {
 	border: 0 solid rgba(255, 255, 255, 0.62);
 	border-radius: 16px;
 
-	background: rgba(246, 250, 251, 0.94);
+	background: rgb(255, 255, 255, 0.9);
 
 	box-shadow: none;
 
-	backdrop-filter: blur(24px) saturate(145%);
-	-webkit-backdrop-filter: blur(24px) saturate(145%);
+	backdrop-filter: blur(var(--blur-control)) saturate(145%);
+	-webkit-backdrop-filter: blur(var(--blur-control)) saturate(145%);
 
 	opacity: 0;
 	visibility: hidden;
@@ -543,15 +557,19 @@ body {
    BOTÓN CALCULAR RUTA
 ========================= */
 
-.route-button {
+.route-button,
+.route-secondary-button {
 	width: fit-content;
-	height: 50px;
+	height: 40px;
+	min-width: 0;
+	max-width: 100%;
 
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	gap: 8px;
 
-	padding: 0 22px;
+	padding: 0 14px;
 	margin-inline: auto;
 	margin-top: 16px;
 
@@ -564,6 +582,9 @@ body {
 	font-family: inherit;
 	font-size: 16px;
 	font-weight: 500;
+	line-height: 1;
+	white-space: nowrap;
+	text-align: center;
 
 	cursor: pointer;
 
@@ -581,6 +602,272 @@ body {
 	cursor: not-allowed;
 }
 
+.route-button.is-loading {
+	animation: route-button-pulse 1s ease-in-out infinite;
+}
+
+.route-status {
+	min-height: 18px;
+	margin: 12px 4px 0;
+	color: var(--apple-secondary-label);
+	font-size: 12px;
+	line-height: 1.35;
+}
+
+.route-status.is-success { color: #198754; }
+.route-status.is-error { color: #c62839; }
+
+.route-result-card {
+	position: fixed !important;
+	top: 88px;
+	right: 20px;
+	width: var(--map-controls-width);
+	z-index: 10;
+	visibility: hidden;
+	pointer-events: none;
+	opacity: 0;
+	right: calc(var(--route-result-right) - 32px);
+	transition: opacity 320ms ease, right 420ms ease, visibility 0s linear 420ms;
+}
+
+/* La caja de resultados conserva exactamente el ancho de los paneles de ruta. */
+.route-result-card .route-section-heading {
+	margin-bottom: 16px;
+}
+
+.route-result-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+}
+
+.route-result-grid > div {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	text-align: center;
+}
+
+/* Misma jerarquía que Origen, Destino y Modelo. */
+.route-result-label {
+	display: block;
+	width: 100%;
+	margin: 0;
+	color: var(--apple-secondary-label);
+	font-size: var(--route-label-size);
+	font-weight: 400;
+	letter-spacing: 0.01em;
+	text-align: center;
+}
+
+/* Valor seleccionado: equivalente visual al texto elegido en los selectores. */
+.route-result-grid strong {
+	display: block;
+	min-width: 0;
+	color: var(--apple-blue);
+	font-size: var(--route-body-size);
+	font-weight: 400;
+	line-height: 1.35;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.result-algorithm-icon {
+	display: inline-flex !important;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	color: var(--apple-blue);
+	font-size: 27px !important;
+	font-variation-settings: "FILL" 0, "wght" 350, "GRAD" 0, "opsz" 24;
+}
+
+.route-secondary-button .tree-action-icon {
+	font-size: 22px !important;
+	font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
+}
+
+.route-button:hover:not(:disabled),
+.route-secondary-button:hover {
+	background: #006ee6;
+}
+
+.route-result-card {
+	--route-result-right: 20px;
+}
+
+.route-result-card.is-visible {
+	opacity: 1;
+	right: var(--route-result-right);
+	visibility: visible;
+	pointer-events: auto;
+	transition-delay: 0s;
+}
+
+.calculated-route {
+	fill: none;
+	stroke: #007aff;
+	stroke-width: 8;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	filter: drop-shadow(0 2px 4px rgba(0, 74, 173, 0.28));
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	animation: route-draw 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.calculated-route-halo {
+	fill: none;
+	stroke: rgba(0, 122, 255, 0.24);
+	stroke-width: 18;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	filter: blur(2px);
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	animation: route-draw 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.tree-dialog {
+	display: flex;
+	flex-direction: column;
+	width: min(1100px, calc(100vw - 32px));
+	height: min(780px, calc(100vh - 32px));
+	padding: 0;
+	overflow: hidden;
+	border: 1px solid rgba(142, 142, 147, 0.28);
+	border-radius: 22px;
+	background: rgba(224, 237, 244, 0.38);
+	box-shadow: 0 20px 60px rgba(35, 57, 62, 0.28);
+	backdrop-filter: blur(var(--blur-control)) saturate(135%);
+	-webkit-backdrop-filter: blur(var(--blur-control)) saturate(135%);
+}
+
+.tree-dialog::backdrop { background: rgba(35, 57, 62, 0.38); backdrop-filter: blur(var(--blur-control)); }
+
+.tree-dialog-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 78px;
+	padding: 10px 14px 10px 20px;
+	border-radius: 21px 21px 0 0;
+	background: rgba(255, 255, 255, 0.28);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56);
+}
+
+.tree-dialog-header h2 {
+	margin: 0;
+	color: var(--apple-blue);
+	font-family: "DM Sans", var(--font-ui);
+	font-size: 23px;
+	font-weight: 400;
+	letter-spacing: 0;
+}
+
+.tree-dialog-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 46px;
+	height: 46px;
+	padding: 0;
+	border: 1px solid rgba(142, 142, 147, 0.3);
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.4);
+	color: var(--apple-blue);
+	cursor: pointer;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68), 0 4px 12px rgba(35, 57, 62, 0.08);
+	backdrop-filter: blur(var(--blur-control));
+	-webkit-backdrop-filter: blur(var(--blur-control));
+	transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.tree-dialog-close:hover {
+	background: rgba(0, 122, 255, 0.1);
+	border-color: rgba(0, 122, 255, 0.28);
+}
+
+.tree-dialog-body {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+	border-radius: 0 0 21px 21px;
+	background:
+		radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.52), transparent 35%),
+		linear-gradient(145deg, rgba(240, 248, 252, 0.68), rgba(214, 231, 239, 0.46));
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+	backdrop-filter: blur(var(--blur-control)) saturate(145%);
+	-webkit-backdrop-filter: blur(var(--blur-control)) saturate(145%);
+}
+
+.tree-dialog-divider {
+	height: 1px;
+	flex: 0 0 auto;
+	background: rgba(104, 126, 145, 0.24);
+}
+
+.tree-view {
+	width: 100%;
+	height: 100%;
+	background: transparent;
+}
+
+.tree-dialog-controls {
+	position: absolute;
+	right: 18px;
+	bottom: 18px;
+	display: flex;
+	align-items: center;
+	height: 56px;
+	z-index: 2;
+}
+
+.tree-dialog-control {
+	width: 56px;
+	height: 56px;
+	min-width: 56px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: #007aff;
+	cursor: pointer;
+	font-family: inherit;
+	font-size: var(--control-icon-size);
+	font-weight: 400;
+	line-height: 1;
+	transition: color 160ms ease, text-shadow 160ms ease;
+}
+
+.tree-dialog-control + .tree-dialog-control {
+	border-left: 1px solid rgba(142, 142, 147, 0.26);
+}
+
+.tree-dialog-control:hover {
+	color: #006ee6;
+	text-shadow: 0 0 14px rgba(0, 122, 255, 0.18);
+}
+
+.tree-dialog-control .material-symbols-rounded {
+	display: block !important;
+	font-size: var(--control-icon-size) !important;
+}
+
+@keyframes route-button-pulse {
+	50% { opacity: 0.62; }
+}
+
+@keyframes route-draw {
+	to { stroke-dashoffset: 0; }
+}
+
 
 /* =========================
    CONTROLES DEL MAPA
@@ -590,11 +877,35 @@ body {
 	position: absolute;
 	top: 20px;
 	right: 20px;
+	width: var(--map-controls-width);
+	height: 56px;
 
 	display: flex;
+	align-items: flex-start;
 	gap: 8px;
 
 	z-index: 10;
+}
+
+.mode-control,
+.navigation-control {
+	flex: 0 0 auto;
+	height: 56px !important;
+	min-height: 56px !important;
+	max-height: 56px !important;
+	align-self: flex-start;
+}
+
+.mode-control {
+	width: 56px;
+}
+
+.navigation-control {
+	width: 168px;
+}
+
+.navigation-control .map-button-group {
+	height: 56px;
 }
 
 .map-button-group {
@@ -735,6 +1046,14 @@ button:focus-visible {
 
 .map-background {
 	fill: #d9e2e5;
+}
+
+.hospital-connection {
+	fill: none;
+	stroke: rgba(58, 97, 108, 0.72);
+	stroke-width: 3;
+	stroke-linecap: round;
+	stroke-dasharray: 8 8;
 }
 
 .avenue {
@@ -951,6 +1270,10 @@ button:focus-visible {
 
 @media (max-width: 520px) {
 
+	:root {
+		--map-controls-width: 208px;
+	}
+
 	.route-panel {
 		top: 12px;
 		left: 12px;
@@ -958,13 +1281,41 @@ button:focus-visible {
 		width: auto;
 	}
 
+	.route-result-card {
+		--route-result-right: 12px;
+		top: 70px;
+		right: 12px;
+		width: var(--map-controls-width);
+	}
+
 	.route-form {
 		padding: 16px;
 	}
 
 	.map-toolbar {
-		top: 12px;
+		top: auto;
+		bottom: 12px;
 		right: 12px;
+		height: 50px;
+	}
+
+	.mode-control,
+	.navigation-control {
+		height: 50px !important;
+		min-height: 50px !important;
+		max-height: 50px !important;
+	}
+
+	.mode-control {
+		width: 50px;
+	}
+
+	.navigation-control {
+		width: 150px;
+	}
+
+	.navigation-control .map-button-group {
+		height: 50px;
 	}
 
 	.map-button {
@@ -1136,7 +1487,7 @@ button:focus-visible {
 	border: 0 solid rgba(255, 255, 255, 0.62);
 	border-radius: 14px;
 
-	background: rgba(246, 250, 251, 0.96);
+	background: rgb(255, 255, 255, 0.9);
 
 	box-shadow: none;
 
@@ -1232,4 +1583,19 @@ button:focus-visible {
 
 .model-option-copy strong {
 	font: inherit;
+}
+
+
+/* =========================
+   RESULTADO EN MÓVIL
+========================= */
+
+@media (max-width: 520px) {
+	.route-result-card {
+		top: 70px;
+		left: auto;
+		right: 12px;
+		bottom: auto;
+		width: var(--map-controls-width);
+	}
 }

@@ -13,14 +13,36 @@ const modeLabel = document.querySelector("#mode-label");
 const routeForm = document.querySelector("#route-form");
 const calculateRoute = document.querySelector("#calculate-route");
 const routeStatus = document.querySelector("#route-status");
+const routeResult = document.querySelector("#route-result");
+const resultAlgorithm = document.querySelector("#result-algorithm");
+const resultDistance = document.querySelector("#result-distance");
+const viewTreeButton = document.querySelector("#view-tree");
+const treeDialog = document.querySelector("#tree-dialog");
+const closeTreeButton = document.querySelector("#close-tree");
+const treeZoomInButton = document.querySelector("#tree-zoom-in");
+const treeZoomOutButton = document.querySelector("#tree-zoom-out");
+const treeFitButton = document.querySelector("#tree-fit");
+const routeModelCard = document.querySelector(".route-model-card");
+const mapToolbar = document.querySelector(".map-toolbar");
 
 const originPicker = document.querySelector("#origin-select");
 const destinationPicker = document.querySelector("#destination-select");
 const modelPicker = document.querySelector("#model-select");
 const hospitalNotice = document.querySelector("#hospital-notice");
 const hospitalNoticeText = document.querySelector("#hospital-notice-text");
+const hospitalNoticeIcon = document.querySelector(".hospital-notice-icon");
 let hospitalNoticeTimer;
 let hospitalNoticeFrame;
+let lastRouteResult = window.location.hash === "#tree" ? window.treeResult : undefined;
+
+function alignMapToolbar() {
+	if (window.innerWidth <= 520) {
+		mapToolbar.style.bottom = "12px";
+		return;
+	}
+	const modelCardBottom = routeModelCard.getBoundingClientRect().bottom;
+	mapToolbar.style.bottom = `${Math.max(20, window.innerHeight - modelCardBottom)}px`;
+}
 
 const routeModels = [
 	{ id: "bfs", name: "Anchura", icon: "account_tree" },
@@ -49,6 +71,32 @@ function updateRouteControls() {
 		!state.origin ||
 		!state.destination ||
 		!state.model;
+}
+
+function setRouteStatus(message, stateClass = "") {
+	routeStatus.textContent = message;
+	showNotice(message, stateClass === "is-error" ? "error" : stateClass === "is-loading" ? "progress_activity" : "check", stateClass);
+}
+
+function showRouteResult(result) {
+	lastRouteResult = result;
+	const model = routeModels.find(item => item.id === result.algorithm);
+	resultAlgorithm.textContent = model?.icon || "account_tree";
+	resultAlgorithm.setAttribute("aria-label", `Algoritmo utilizado: ${result.algorithm_name}`);
+	resultDistance.textContent = `${Number(result.distance).toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km`;
+	routeResult.classList.remove("is-hidden");
+	routeResult.setAttribute("aria-hidden", "false");
+	routeResult.classList.remove("is-visible");
+	requestAnimationFrame(() => routeResult.classList.add("is-visible"));
+}
+
+if (lastRouteResult) showRouteResult(lastRouteResult);
+
+function hideRouteResult() {
+	lastRouteResult = undefined;
+	routeResult.classList.remove("is-visible");
+	routeResult.classList.add("is-hidden");
+	routeResult.setAttribute("aria-hidden", "true");
 }
 
 function closeModelPicker() {
@@ -91,6 +139,7 @@ function setupModelPicker() {
 			state.model = model.id;
 			updateModelPicker(state.model);
 			updateRouteControls();
+			showNotice(`Modelo: ${model.name}`, model.icon, "is-model");
 			closeModelPicker();
 		});
 		optionsContainer.appendChild(option);
@@ -129,10 +178,10 @@ function setActiveSelection(type) {
 	destinationPicker.classList.toggle("is-active", state.activeSelection === "destination");
 }
 
-function showHospitalNotice(hospital, type) {
-	const selectionLabel = type === "destination" ? "Destino" : "Origen";
-
-	hospitalNoticeText.textContent = `${selectionLabel}: ${hospital.name}`;
+function showNotice(message, icon = "check", tone = "") {
+	hospitalNoticeText.textContent = message;
+	hospitalNoticeIcon.textContent = icon;
+	hospitalNoticeIcon.className = `material-symbols-rounded hospital-notice-icon ${tone}`.trim();
 	hospitalNotice.classList.remove("is-visible");
 	cancelAnimationFrame(hospitalNoticeFrame);
 	hospitalNoticeFrame = requestAnimationFrame(() => hospitalNotice.classList.add("is-visible"));
@@ -140,7 +189,12 @@ function showHospitalNotice(hospital, type) {
 	clearTimeout(hospitalNoticeTimer);
 	hospitalNoticeTimer = setTimeout(() => {
 		hospitalNotice.classList.remove("is-visible");
-	}, 5200);
+	}, 2800);
+}
+
+function showHospitalNotice(hospital, type) {
+	const selectionLabel = type === "destination" ? "Destino" : "Origen";
+	showNotice(`${selectionLabel}: ${hospital.name}`, "check", "is-hospital");
 }
 
 function clearHospital(type) {
@@ -439,6 +493,9 @@ async function loadHospitals() {
 
 		state.hospitals =
 			await response.json();
+		const connectionsResponse = await fetch("../data/connections.json");
+		if (!connectionsResponse.ok) throw new Error("No se pudo leer connections.json");
+		const connections = await connectionsResponse.json();
 
 
 		/* Crear selectores */
@@ -465,6 +522,7 @@ async function loadHospitals() {
 				await mapView.enableRemoteMap(
 					mapContainer,
 					state.hospitals,
+					connections,
 					window.APP_CONFIG.mapTilerKey,
 					id => selectHospital(id)
 				);
@@ -474,6 +532,7 @@ async function loadHospitals() {
 				mapView.init(
 					mapContainer,
 					state.hospitals,
+					connections,
 					id => selectHospital(id)
 				);
 
@@ -485,6 +544,7 @@ async function loadHospitals() {
 			mapView.init(
 				mapContainer,
 				state.hospitals,
+				connections,
 				id => selectHospital(id)
 			);
 		}
@@ -541,16 +601,67 @@ document
 
 routeForm.addEventListener(
 	"submit",
-	event => {
+	async event => {
 
 		event.preventDefault();
-
-		routeStatus.textContent =
-			"La red de rutas todavía no está disponible.";
+		if (!state.origin || !state.destination || !state.model) return;
+		if (state.origin === state.destination) {
+			setRouteStatus("El origen y el destino deben ser diferentes.", "is-error");
+			return;
+		}
+		calculateRoute.disabled = true;
+		calculateRoute.classList.add("is-loading");
+		setRouteStatus("Calculando ruta...", "is-loading");
+		hideRouteResult();
+		mapView.setRoute([]);
+		try {
+			const response = await fetch("../api/search", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ origin: state.origin, destination: state.destination, algorithm: state.model })
+			});
+			const responseText = await response.text();
+			let result;
+			try {
+				result = responseText ? JSON.parse(responseText) : null;
+			} catch {
+				throw new Error("El servidor activo no es la API de rutas. Ejecuta: python backend/server.py");
+			}
+			if (!response.ok) throw new Error(result?.error || "No fue posible calcular la ruta.");
+			if (!result) throw new Error("El backend no devolvió una respuesta válida.");
+			if (!result.found) throw new Error("No se encontró una ruta entre los hospitales seleccionados.");
+			if (!Array.isArray(result.route_geometry) || result.route_geometry.length < 2) {
+				throw new Error("No se obtuvo la geometría de las calles para esta ruta.");
+			}
+			mapView.setRoute(result.path, result.route_geometry);
+			showRouteResult(result);
+			setRouteStatus("Ruta calculada correctamente.", "is-success");
+		} catch (error) {
+			setRouteStatus(error.message || "No se pudo comunicar con el backend.", "is-error");
+		} finally {
+			calculateRoute.disabled = !state.origin || !state.destination || !state.model;
+			calculateRoute.classList.remove("is-loading");
+		}
 	}
 );
 
+viewTreeButton.addEventListener("click", () => {
+	if (!lastRouteResult) return;
+	treeDialog.showModal();
+	requestAnimationFrame(() => renderTree(lastRouteResult));
+});
+
+treeZoomInButton.addEventListener("click", () => window.zoomTree?.(1.2));
+treeZoomOutButton.addEventListener("click", () => window.zoomTree?.(0.8));
+treeFitButton.addEventListener("click", () => window.fitTree?.());
+closeTreeButton.addEventListener("click", () => treeDialog.close());
+treeDialog.addEventListener("click", event => {
+	if (event.target === treeDialog) treeDialog.close();
+});
+
 setupModelPicker();
+window.addEventListener("resize", alignMapToolbar);
+requestAnimationFrame(alignMapToolbar);
 
 
 /* =========================
