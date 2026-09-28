@@ -55,7 +55,10 @@ def a_star(graph, hospitals, origin, destination):
                 
                 heapq.heappush(queue, (heuristic_function, new_distance, new_path))
 
-        expanded[current] = len(expanded) + 1
+        expanded[current] = {
+            "order": len(expanded) + 1, # Guarda el orden de expansión del nodo actual
+            "path": path.copy() # ... y el camino que llevó a este nodo
+        } 
 
     return None
 

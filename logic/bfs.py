@@ -41,7 +41,11 @@ def bfs(graph, origin, destination):
                 
                 queue.append((new_distance, new_path)) # Se agrega el nuevo camino a la cola para su posterior exploración.
 
-        expanded[current] = len(expanded) + 1  # Se agrega el nodo actual al diccionario expanded con su número de expansión
+        expanded[current] = {
+            "order": len(expanded) + 1, # Guarda el orden de expansión del nodo actual
+            "path": path.copy() # ... y el camino que llevó a este nodo
+        }  
+        # Ejemplo: {"H25": {"order": 3, "path": ["H30", "H25"]}}
 
     return None
 

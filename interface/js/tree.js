@@ -1,6 +1,12 @@
 function renderTree(result) {
     const id = path => JSON.stringify(path);
 
+    const expansionOrder = new Map(
+    Object.values(result.expanded ?? {})
+        .filter(item => item && Array.isArray(item.path))
+        .map(item => [id(item.path), item.order])
+    );
+
     const routeNodes = new Set(
         result.path.map((_, index) =>
             id(result.path.slice(0, index + 1)))
@@ -9,8 +15,14 @@ function renderTree(result) {
     function makeNode(path, g, h = null, f = null) {
 
         const onRoute = routeNodes.has(id(path));
+        const order = expansionOrder.get(id(path));
         
-        const labelLines = [`<b>${path.at(-1)}</b>`, `g=${g.toFixed(3)}`];
+        const labelLines = [
+            `<b>${path.at(-1)}</b>`,
+            ...(order !== undefined ? [`Expansión ${order}`] : []),
+            `g=${g.toFixed(3)}`
+        ];
+        
         if (h != null) labelLines.push(`h=${h.toFixed(3)}`);
         if (f != null) labelLines.push(`f=${f.toFixed(3)}`);
 
