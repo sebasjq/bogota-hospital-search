@@ -6,16 +6,17 @@ function renderTree(result) {
             id(result.path.slice(0, index + 1)))
     );
 
-    function makeNode(path, g, h = null) {
+    function makeNode(path, g, h = null, f = null) {
 
         const onRoute = routeNodes.has(id(path));
+        
+        const labelLines = [`<b>${path.at(-1)}</b>`, `g=${g.toFixed(3)}`];
+        if (h != null) labelLines.push(`h=${h.toFixed(3)}`);
+        if (f != null) labelLines.push(`f=${f.toFixed(3)}`);
 
         return {
             id: id(path),
-
-            label: h == null
-                ? `${path.at(-1)}\ng=${g.toFixed(3)}`
-                : `${path.at(-1)}\ng=${g.toFixed(3)}\nh=${h.toFixed(3)}`,
+            label: labelLines.join("\n"),
 
             title: path.join(" → "),
             level: path.length - 1,
@@ -36,12 +37,16 @@ function renderTree(result) {
         };
     }
 
+    const hasF = result.tree_edges.some(edge => edge.f != null);
+    const rootF = hasF ? result.heuristic : null;
+
     const root = [result.origin];
-    const nodes = new Map([[id(root), makeNode(root, 0, result.heuristic)]]);
+    const nodes = new Map([[id(root), makeNode(root, 0, result.heuristic, rootF)]]);
     const edges = [];
 
     for (const edge of result.tree_edges) {
-        nodes.set(id(edge.child), makeNode(edge.child, edge.g, edge.h));
+
+        nodes.set(id(edge.child), makeNode(edge.child, edge.g, edge.h, edge.f));
 
         const onRoute = routeNodes.has(id(edge.child));
 
@@ -63,10 +68,25 @@ function renderTree(result) {
         document.getElementById("tree"),
         { nodes: [...nodes.values()], edges: edgeData },
         {
-            nodes: { shape: "circle" },
-            layout: {
-                hierarchical: { direction: "UD", sortMethod: "directed" }
+            nodes: {
+                shape: "circle",
+                margin: 14,
+                font: {
+                    size: 14,
+                    multi: "html",
+                    bold: { size: 22 }
+                }
             },
+
+            layout: {
+                hierarchical: {
+                    direction: "UD",
+                    sortMethod: "directed",
+                    levelSeparation: 180,
+                    nodeSpacing: 200
+                }
+            },
+
             interaction: { selectConnectedEdges: false },
             physics: false
         }
