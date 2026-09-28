@@ -7,11 +7,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from logic.graph import load_graph
 
-
 def bfs(graph, origin, destination):
     if origin not in graph or destination not in graph:
         raise ValueError("Origin or destination does not exist")
-
 
     queue = deque([(0, [origin])]) # Cola FIFO con distancia acumulada y camino
     expanded = {} # Diccionario expanded que contendrá el id del hospital y el número de expansión
