@@ -28,11 +28,11 @@ const mapToolbar = document.querySelector(".map-toolbar");
 const originPicker = document.querySelector("#origin-select");
 const destinationPicker = document.querySelector("#destination-select");
 const modelPicker = document.querySelector("#model-select");
-const hospitalNotice = document.querySelector("#hospital-notice");
-const hospitalNoticeText = document.querySelector("#hospital-notice-text");
-const hospitalNoticeIcon = document.querySelector(".hospital-notice-icon");
-let hospitalNoticeTimer;
-let hospitalNoticeFrame;
+const noticeStack = document.querySelector("#notice-stack");
+const NOTICE_DURATION = 2800;   // ms que permanece cada aviso
+const NOTICE_MAX_VISIBLE = 3;   // máximo de avisos apilados
+const NOTICE_EXIT_MS = 340;     // debe coincidir con la salida en CSS (.notice-item.is-leaving)
+let activeNotices = [];         // el más nuevo primero
 let lastRouteResult = window.location.hash === "#tree" ? window.treeResult : undefined;
 
 function alignMapToolbar() {
@@ -178,18 +178,67 @@ function setActiveSelection(type) {
 	destinationPicker.classList.toggle("is-active", state.activeSelection === "destination");
 }
 
-function showNotice(message, icon = "check", tone = "") {
-	hospitalNoticeText.textContent = message;
-	hospitalNoticeIcon.textContent = icon;
-	hospitalNoticeIcon.className = `material-symbols-rounded hospital-notice-icon ${tone}`.trim();
-	hospitalNotice.classList.remove("is-visible");
-	cancelAnimationFrame(hospitalNoticeFrame);
-	hospitalNoticeFrame = requestAnimationFrame(() => hospitalNotice.classList.add("is-visible"));
+const NOTICE_TEMPLATE = `
+	<glass-element class="glass-control notice-item" disable-click-animation auto-size radius="999" blur="3" depth="8"
+		strength="40" chromatic-aberration="3" background-color="rgba(255, 255, 255, 0.3)"
+		style="--glass-padding: 8px 14px 8px 8px;">
+		<div class="hospital-notice-content">
+			<span class="material-symbols-rounded hospital-notice-icon" aria-hidden="true"></span>
+			<span class="hospital-notice-text"></span>
+		</div>
+	</glass-element>`;
 
-	clearTimeout(hospitalNoticeTimer);
-	hospitalNoticeTimer = setTimeout(() => {
-		hospitalNotice.classList.remove("is-visible");
-	}, 2800);
+/* Posiciona cada aviso según su lugar en la pila (0 = el más nuevo, al frente). */
+function layoutNotices() {
+	activeNotices.forEach((notice, index) => {
+		notice.el.style.setProperty("--i", index);
+		notice.el.style.zIndex = String(100 - index);
+	});
+}
+
+function dismissNotice(notice) {
+	if (notice.leaving) return;
+	notice.leaving = true;
+	clearTimeout(notice.timer);
+	activeNotices = activeNotices.filter(item => item !== notice);
+	notice.el.classList.remove("is-visible");
+	notice.el.classList.add("is-leaving");
+	layoutNotices();
+	setTimeout(() => notice.el.remove(), NOTICE_EXIT_MS + 60);
+}
+
+function showNotice(message, icon = "check", tone = "") {
+	// Un aviso de "cargando" se reemplaza por el siguiente en vez de apilarse.
+	activeNotices.filter(item => item.tone === "is-loading").forEach(dismissNotice);
+
+	// Mismo mensaje repetido: solo reinicia el tiempo del que ya está al frente.
+	const front = activeNotices[0];
+	if (front && front.message === message && front.tone === tone) {
+		clearTimeout(front.timer);
+		front.timer = setTimeout(() => dismissNotice(front), NOTICE_DURATION);
+		return;
+	}
+
+	const holder = document.createElement("div");
+	holder.innerHTML = NOTICE_TEMPLATE.trim();
+	const el = holder.firstElementChild;
+	const iconEl = el.querySelector(".hospital-notice-icon");
+	iconEl.textContent = icon;
+	iconEl.className = `material-symbols-rounded hospital-notice-icon ${tone}`.trim();
+	el.querySelector(".hospital-notice-text").textContent = message;
+
+	const notice = { el, message, tone, leaving: false, timer: 0 };
+	activeNotices.unshift(notice);
+	activeNotices.slice(NOTICE_MAX_VISIBLE).forEach(dismissNotice);
+	layoutNotices();
+
+	noticeStack.appendChild(el);
+	void el.offsetWidth; // fija el estado inicial (fuera de pantalla) antes de animar
+	requestAnimationFrame(() => {
+		if (!notice.leaving) el.classList.add("is-visible");
+	});
+
+	notice.timer = setTimeout(() => dismissNotice(notice), NOTICE_DURATION);
 }
 
 function showHospitalNotice(hospital, type) {
