@@ -3,7 +3,11 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Mapa de Bogotá</title>
+	<title>HealthMap</title>
+	<meta name="description" content="Baymax, buscador de hospitales y rutas en Bogotá.">
+	<meta name="theme-color" content="#d9e2e5">
+	<link rel="icon" type="image/png" href="Logo.png">
+	<link rel="apple-touch-icon" href="Logo.png">
 
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,6 +23,17 @@
 <body>
 
 	<main id="map" aria-label="Mapa de Bogotá"></main>
+
+	<div
+		id="hospital-notice"
+		class="hospital-notice"
+		role="status"
+		aria-live="polite"
+		aria-atomic="true"
+	>
+		<span class="material-symbols-rounded hospital-notice-icon" aria-hidden="true">check</span>
+		<span id="hospital-notice-text" class="hospital-notice-text"></span>
+	</div>
 
 	<!-- =========================
 	     PANEL DE RUTA
@@ -75,10 +90,11 @@
 						</span>
 
 						<span
-							class="material-symbols-rounded hospital-picker-arrow"
+							class="hospital-picker-arrow"
 							aria-hidden="true"
 						>
-							expand_more
+							<span class="material-symbols-rounded hospital-picker-arrow-icon">expand_more</span>
+							<span class="material-symbols-rounded hospital-picker-clear-icon">close</span>
 						</span>
 					</div>
 
@@ -116,10 +132,11 @@
 						</span>
 
 						<span
-							class="material-symbols-rounded hospital-picker-arrow"
+							class="hospital-picker-arrow"
 							aria-hidden="true"
 						>
-							expand_more
+							<span class="material-symbols-rounded hospital-picker-arrow-icon">expand_more</span>
+							<span class="material-symbols-rounded hospital-picker-clear-icon">close</span>
 						</span>
 					</div>
 
@@ -188,9 +205,9 @@
 			class="glass-control mode-control"
 			auto-size
 			radius="999"
-			blur="3"
+			blur="1"
 			depth="8"
-			strength="32"
+			strength="40"
 			chromatic-aberration="3"
 			background-color="rgba(255, 255, 255, 0.6)"
 			style="--glass-padding: 0;"
@@ -216,9 +233,9 @@
 			class="glass-control navigation-control"
 			auto-size
 			radius="999"
-			blur="3"
+			blur="1"
 			depth="8"
-			strength="32"
+			strength="40"
 			chromatic-aberration="3"
 			background-color="rgba(255, 255, 255, 0.6)"
 			style="--glass-padding: 0;"
