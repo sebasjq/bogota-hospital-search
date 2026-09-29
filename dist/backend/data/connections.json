@@ -1,0 +1,386 @@
+[
+  {
+    "source": "H01",
+    "target": "H05",
+    "distance_forward_km": 5.514,
+    "distance_backward_km": 6.807
+  },
+  {
+    "source": "H01",
+    "target": "H16",
+    "distance_forward_km": 6.241,
+    "distance_backward_km": 5.471
+  },
+  {
+    "source": "H01",
+    "target": "H20",
+    "distance_forward_km": 9.582,
+    "distance_backward_km": 8.096
+  },
+  {
+    "source": "H02",
+    "target": "H03",
+    "distance_forward_km": 4.46,
+    "distance_backward_km": 3.131
+  },
+  {
+    "source": "H02",
+    "target": "H06",
+    "distance_forward_km": 2.382,
+    "distance_backward_km": 1.441
+  },
+  {
+    "source": "H02",
+    "target": "H12",
+    "distance_forward_km": 3.072,
+    "distance_backward_km": 2.455
+  },
+  {
+    "source": "H02",
+    "target": "H13",
+    "distance_forward_km": 1.644,
+    "distance_backward_km": 2.468
+  },
+  {
+    "source": "H02",
+    "target": "H21",
+    "distance_forward_km": 6.163,
+    "distance_backward_km": 5.787
+  },
+  {
+    "source": "H03",
+    "target": "H04",
+    "distance_forward_km": 3.09,
+    "distance_backward_km": 1.388
+  },
+  {
+    "source": "H03",
+    "target": "H06",
+    "distance_forward_km": 1.495,
+    "distance_backward_km": 3.177
+  },
+  {
+    "source": "H03",
+    "target": "H12",
+    "distance_forward_km": 0.772,
+    "distance_backward_km": 1.419
+  },
+  {
+    "source": "H03",
+    "target": "H14",
+    "distance_forward_km": 2.574,
+    "distance_backward_km": 3.436
+  },
+  {
+    "source": "H04",
+    "target": "H10",
+    "distance_forward_km": 4.604,
+    "distance_backward_km": 3.025
+  },
+  {
+    "source": "H04",
+    "target": "H12",
+    "distance_forward_km": 1.723,
+    "distance_backward_km": 3.452
+  },
+  {
+    "source": "H04",
+    "target": "H14",
+    "distance_forward_km": 3.233,
+    "distance_backward_km": 3.401
+  },
+  {
+    "source": "H04",
+    "target": "H32",
+    "distance_forward_km": 9.466,
+    "distance_backward_km": 9.44
+  },
+  {
+    "source": "H05",
+    "target": "H16",
+    "distance_forward_km": 1.649,
+    "distance_backward_km": 1.666
+  },
+  {
+    "source": "H05",
+    "target": "H19",
+    "distance_forward_km": 9.608,
+    "distance_backward_km": 9.203
+  },
+  {
+    "source": "H05",
+    "target": "H17",
+    "distance_forward_km": 14.167,
+    "distance_backward_km": 15.672
+  },
+  {
+    "source": "H17",
+    "target": "H01",
+    "distance_forward_km": 12.897,
+    "distance_backward_km": 12.664
+  },
+  {
+    "source": "H06",
+    "target": "H12",
+    "distance_forward_km": 1.63,
+    "distance_backward_km": 1.409
+  },
+  {
+    "source": "H06",
+    "target": "H13",
+    "distance_forward_km": 3.441,
+    "distance_backward_km": 2.698
+  },
+  {
+    "source": "H06",
+    "target": "H14",
+    "distance_forward_km": 2.385,
+    "distance_backward_km": 1.876
+  },
+  {
+    "source": "H07",
+    "target": "H09",
+    "distance_forward_km": 1.328,
+    "distance_backward_km": 1.97
+  },
+  {
+    "source": "H07",
+    "target": "H10",
+    "distance_forward_km": 4.655,
+    "distance_backward_km": 2.644
+  },
+  {
+    "source": "H07",
+    "target": "H20",
+    "distance_forward_km": 3.509,
+    "distance_backward_km": 4.514
+  },
+  {
+    "source": "H08",
+    "target": "H11",
+    "distance_forward_km": 0.747,
+    "distance_backward_km": 0.3
+  },
+  {
+    "source": "H08",
+    "target": "H01",
+    "distance_forward_km": 7.262,
+    "distance_backward_km": 7.872
+  },
+  {
+    "source": "H08",
+    "target": "H20",
+    "distance_forward_km": 2.119,
+    "distance_backward_km": 3.001
+  },
+  {
+    "source": "H09",
+    "target": "H10",
+    "distance_forward_km": 4.54,
+    "distance_backward_km": 3.953
+  },
+  {
+    "source": "H09",
+    "target": "H11",
+    "distance_forward_km": 5.396,
+    "distance_backward_km": 5.593
+  },
+  {
+    "source": "H09",
+    "target": "H20",
+    "distance_forward_km": 2.743,
+    "distance_backward_km": 2.669
+  },
+  {
+    "source": "H10",
+    "target": "H11",
+    "distance_forward_km": 6.229,
+    "distance_backward_km": 5.667
+  },
+  {
+    "source": "H10",
+    "target": "H20",
+    "distance_forward_km": 5.333,
+    "distance_backward_km": 5.864
+  },
+  {
+    "source": "H10",
+    "target": "H29",
+    "distance_forward_km": 8.776,
+    "distance_backward_km": 6.538
+  },
+  {
+    "source": "H29",
+    "target": "H11",
+    "distance_forward_km": 9.894,
+    "distance_backward_km": 12.726
+  },
+  {
+    "source": "H10",
+    "target": "H32",
+    "distance_forward_km": 9.388,
+    "distance_backward_km": 9.373
+  },
+  {
+    "source": "H11",
+    "target": "H17",
+    "distance_forward_km": 9.069,
+    "distance_backward_km": 8.71
+  },
+  {
+    "source": "H11",
+    "target": "H20",
+    "distance_forward_km": 2.419,
+    "distance_backward_km": 3.076
+  },
+  {
+    "source": "H11",
+    "target": "H27",
+    "distance_forward_km": 12.964,
+    "distance_backward_km": 10.893
+  },
+  {
+    "source": "H12",
+    "target": "H32",
+    "distance_forward_km": 8.728,
+    "distance_backward_km": 8.637
+  },
+  {
+    "source": "H13",
+    "target": "H15",
+    "distance_forward_km": 3.087,
+    "distance_backward_km": 2.837
+  },
+  {
+    "source": "H15",
+    "target": "H21",
+    "distance_forward_km": 6.143,
+    "distance_backward_km": 7.09
+  },
+  {
+    "source": "H15",
+    "target": "H24",
+    "distance_forward_km": 11.333,
+    "distance_backward_km": 13.309
+  },
+  {
+    "source": "H17",
+    "target": "H18",
+    "distance_forward_km": 6.35,
+    "distance_backward_km": 8.145
+  },
+  {
+    "source": "H17",
+    "target": "H19",
+    "distance_forward_km": 9.844,
+    "distance_backward_km": 8.746
+  },
+  {
+    "source": "H17",
+    "target": "H27",
+    "distance_forward_km": 9.569,
+    "distance_backward_km": 11.202
+  },
+  {
+    "source": "H18",
+    "target": "H27",
+    "distance_forward_km": 10.381,
+    "distance_backward_km": 11.062
+  },
+  {
+    "source": "H21",
+    "target": "H22",
+    "distance_forward_km": 3.319,
+    "distance_backward_km": 2.071
+  },
+  {
+    "source": "H21",
+    "target": "H32",
+    "distance_forward_km": 6.058,
+    "distance_backward_km": 4.64
+  },
+  {
+    "source": "H22",
+    "target": "H23",
+    "distance_forward_km": 4.19,
+    "distance_backward_km": 2.079
+  },
+  {
+    "source": "H25",
+    "target": "H26",
+    "distance_forward_km": 7.228,
+    "distance_backward_km": 7.698
+  },
+  {
+    "source": "H26",
+    "target": "H11",
+    "distance_forward_km": 13.226,
+    "distance_backward_km": 14.48
+  },
+  {
+    "source": "H25",
+    "target": "H29",
+    "distance_forward_km": 3.742,
+    "distance_backward_km": 4.367
+  },
+  {
+    "source": "H25",
+    "target": "H31",
+    "distance_forward_km": 4.617,
+    "distance_backward_km": 4.46
+  },
+  {
+    "source": "H25",
+    "target": "H32",
+    "distance_forward_km": 3.5,
+    "distance_backward_km": 3.49
+  },
+  {
+    "source": "H26",
+    "target": "H27",
+    "distance_forward_km": 5.396,
+    "distance_backward_km": 4.301
+  },
+  {
+    "source": "H26",
+    "target": "H29",
+    "distance_forward_km": 5.728,
+    "distance_backward_km": 6.158
+  },
+  {
+    "source": "H26",
+    "target": "H31",
+    "distance_forward_km": 6.01,
+    "distance_backward_km": 6.294
+  },
+  {
+    "source": "H28",
+    "target": "H30",
+    "distance_forward_km": 9.21,
+    "distance_backward_km": 9.866
+  },
+  {
+    "source": "H28",
+    "target": "H31",
+    "distance_forward_km": 4.236,
+    "distance_backward_km": 3.732
+  },
+  {
+    "source": "H29",
+    "target": "H32",
+    "distance_forward_km": 4.18,
+    "distance_backward_km": 3.436
+  },
+  {
+    "source": "H30",
+    "target": "H31",
+    "distance_forward_km": 8.461,
+    "distance_backward_km": 8.571
+  },
+  {
+    "source": "H30",
+    "target": "H25",
+    "distance_forward_km": 8.854,
+    "distance_backward_km": 9.747
+  }
+]

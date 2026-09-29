@@ -1,0 +1,246 @@
+const mapView = (() => {
+	const bounds = { west: -74.23, east: -73.98, south: 4.45, north: 4.82 };
+	const documentRoot = document.documentElement; // recibe .is-map-moving mientras el mapa se mueve
+	const ROUTE_COLOR = "rgba(0, 122, 255, 1)";
+	const ROUTE_CLEAR = "rgba(0, 122, 255, 0)";
+	/* Degradado por progreso: revela la ruta sin volver a enviar la geometría al worker en cada frame. */
+	function routeGradient(progress) {
+		const line = ["line-progress"];
+		if (progress >= 0.999) return ["interpolate", ["linear"], line, 0, ROUTE_COLOR, 1, ROUTE_COLOR];
+		if (progress <= 0) return ["interpolate", ["linear"], line, 0, ROUTE_CLEAR, 1, ROUTE_CLEAR];
+		return ["interpolate", ["linear"], line, 0, ROUTE_COLOR, progress, ROUTE_COLOR, Math.min(progress + 0.001, 0.9999), ROUTE_CLEAR, 1, ROUTE_CLEAR];
+	}
+	let svg; let viewport; let remoteMap; let remoteMarkers = new Map(); let localMarkers = new Map(); let hospitalPositions = new Map(); let remoteMode = "2d"; let scale = 1; let rotation = 0; let offsetX = 0; let offsetY = 0; let dragStart; let pendingTransform; let transformFrame;
+	let connectionLayer; let routeLayer; let routeAnimationFrame;
+	/* Estado del mapa remoto (MapLibre) */
+	let remoteReady = false;          // true tras el evento "load" (isStyleLoaded() es false cada vez que se cargan teselas)
+	let pendingRoute = null;          // ruta pedida antes de que el estilo estuviera listo
+	let buildingsTimer;               // oculta los edificios al terminar la transición 3D → 2D
+	const BUILDINGS_LAYER = "bogota-buildings-3d";
+	const PIXEL_RATIO_CAP_2D = 2;
+	const PIXEL_RATIO_CAP_3D = 1.5;   // 3D dibuja mucha más geometría por frame: se limita la resolución interna
+	function pixelRatioFor(mode) { return Math.min(window.devicePixelRatio || 1, mode === "3d" ? PIXEL_RATIO_CAP_3D : PIXEL_RATIO_CAP_2D); }
+	/* Cambiar "visibility" recarga TODA la fuente vectorial (calles, etiquetas, etc.), así que solo se hace al
+	   cambiar de modo 2D/3D y nunca durante el movimiento del mapa. */
+	function setBuildingsVisible(visible) {
+		if (!remoteMap || !remoteMap.getLayer(BUILDINGS_LAYER)) return;
+		const value = visible ? "visible" : "none";
+		if (remoteMap.getLayoutProperty(BUILDINGS_LAYER, "visibility") !== value) remoteMap.setLayoutProperty(BUILDINGS_LAYER, "visibility", value);
+	}
+	function project(longitude, latitude) { return { x: ((longitude - bounds.west) / (bounds.east - bounds.west)) * 1000, y: ((bounds.north - latitude) / (bounds.north - bounds.south)) * 1400 }; }
+	function transform() { viewport.setAttribute("transform", `translate(${offsetX} ${offsetY}) rotate(${rotation} 500 700) scale(${scale})`); }
+	function scheduleTransform() { pendingTransform = true; if (transformFrame) return; transformFrame = requestAnimationFrame(() => { transformFrame = undefined; if (pendingTransform) { pendingTransform = false; transform(); } }); }
+	function line(points, className) {
+		const element = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+		element.setAttribute("points", points.map(([longitude, latitude]) => { const point = project(longitude, latitude); return `${point.x},${point.y}`; }).join(" "));
+		if (className.includes("calculated-route")) element.setAttribute("pathLength", "1");
+		element.setAttribute("class", className); return element;
+	}
+	function init(container, hospitals, connections, onSelect) {
+		hospitalPositions = new Map(hospitals.map(hospital => [hospital.id, { longitude: hospital.longitude, latitude: hospital.latitude }]));
+		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 1000 1400"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Mapa local esquemático de Bogotá");
+		viewport = document.createElementNS("http://www.w3.org/2000/svg", "g");
+		const background = document.createElementNS("http://www.w3.org/2000/svg", "rect"); background.setAttribute("width", "1000"); background.setAttribute("height", "1400"); background.setAttribute("class", "map-background"); viewport.appendChild(background);
+		viewport.appendChild(line([[-74.16, 4.80], [-74.15, 4.73], [-74.17, 4.67], [-74.16, 4.60], [-74.18, 4.51]], "river"));
+		const avenues = [[[-74.20, 4.65], [-73.99, 4.68]], [[-74.18, 4.59], [-74.00, 4.62]], [[-74.19, 4.54], [-74.01, 4.57]], [[-74.10, 4.47], [-74.08, 4.80]], [[-74.05, 4.48], [-74.06, 4.80]], [[-74.15, 4.48], [-74.14, 4.80]], [[-74.20, 4.71], [-74.00, 4.72]], [[-74.12, 4.45], [-74.12, 4.82]]];
+		avenues.forEach(path => viewport.appendChild(line(path, "avenue")));
+		[["Suba", -74.11, 4.77], ["Engativá", -74.14, 4.70], ["Chapinero", -74.06, 4.66], ["Kennedy", -74.16, 4.61], ["Usme", -74.10, 4.50]].forEach(([text, longitude, latitude]) => { const point = project(longitude, latitude); const label = document.createElementNS("http://www.w3.org/2000/svg", "text"); label.setAttribute("x", point.x); label.setAttribute("y", point.y); label.textContent = text; label.setAttribute("class", "district-label"); viewport.appendChild(label); });
+		connectionLayer = document.createElementNS("http://www.w3.org/2000/svg", "g"); connectionLayer.setAttribute("class", "connection-layer");
+		connections.forEach(connection => {
+			const source = hospitalPositions.get(connection.source);
+			const target = hospitalPositions.get(connection.target);
+			if (source && target) connectionLayer.appendChild(line([[source.longitude, source.latitude], [target.longitude, target.latitude]], "hospital-connection"));
+		});
+		routeLayer = document.createElementNS("http://www.w3.org/2000/svg", "g"); routeLayer.setAttribute("class", "route-layer");
+		viewport.appendChild(connectionLayer);
+		viewport.appendChild(routeLayer);
+		hospitals.forEach(hospital => { const point = project(hospital.longitude, hospital.latitude); const group = document.createElementNS("http://www.w3.org/2000/svg", "g"); group.setAttribute("class", "hospital-marker"); group.dataset.id = hospital.id; group.setAttribute("role", "button"); group.setAttribute("tabindex", "0"); group.setAttribute("aria-label", hospital.name); group.setAttribute("transform", `translate(${point.x} ${point.y})`); group.innerHTML = '<g class="marker-content"><rect class="marker-shadow" x="-12" y="-10" width="24" height="24" rx="6"></rect><rect class="marker-backdrop" x="-12" y="-12" width="24" height="24" rx="6"></rect><path class="marker-hospital" d="M-3.5-9h7v5.5H9v7H3.5V9h-7V3.5H-9v-7h5.5z"></path><path class="marker-location" d="M0 11C-1.7 8.2-7 3.4-7-1.5A7 7 0 1 1 7-1.5C7 3.4 1.7 8.2 0 11Zm0-9.2A2.8 2.8 0 1 0 0-3.8a2.8 2.8 0 0 0 0 5.6Z"></path></g>'; const selectMarker = () => onSelect(hospital.id); group.addEventListener("click", selectMarker); group.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectMarker(); } }); localMarkers.set(hospital.id, group); viewport.appendChild(group); });
+		svg.appendChild(viewport); container.appendChild(svg);
+		svg.addEventListener("wheel", event => { event.preventDefault(); setZoom(scale + (event.deltaY < 0 ? 0.15 : -0.15)); }, { passive: false });
+		svg.addEventListener("pointerdown", event => { dragStart = { x: event.clientX - offsetX, y: event.clientY - offsetY }; svg.setPointerCapture(event.pointerId); documentRoot.classList.add("is-map-moving"); });
+		svg.addEventListener("pointermove", event => { if (dragStart) { offsetX = event.clientX - dragStart.x; offsetY = event.clientY - dragStart.y; scheduleTransform(); } }); svg.addEventListener("pointerup", () => { dragStart = undefined; documentRoot.classList.remove("is-map-moving"); }); svg.addEventListener("pointercancel", () => { dragStart = undefined; documentRoot.classList.remove("is-map-moving"); });
+	}
+	function setZoom(nextScale) { if (remoteMap) { remoteMap.zoomTo(Math.min(16, Math.max(10, remoteMap.getZoom() + (nextScale > 1 ? 1 : -1))), { duration: 180 }); return; } scale = Math.min(3, Math.max(0.8, nextScale)); scheduleTransform(); }
+	function zoomIn() { setZoom(remoteMap ? 2 : scale + 0.2); }
+	function zoomOut() { setZoom(remoteMap ? 0 : scale - 0.2); }
+	function rotate(degrees) { if (remoteMap) { remoteMap.rotateTo(remoteMap.getBearing() + degrees, { duration: 220 }); return; } rotation = (rotation + degrees) % 360; scheduleTransform(); }
+	function reset() { if (remoteMap) { remoteMap.flyTo({ center: [-74.08, 4.65], zoom: remoteMode === "3d" ? 14 : 11.3, pitch: remoteMode === "3d" ? 45 : 0, bearing: remoteMode === "3d" ? -20 : 0 }); return; } scale = 1; rotation = 0; offsetX = 0; offsetY = 0; transform(); }
+	function focusHospital(id) {
+		const position = hospitalPositions.get(id);
+		if (!position) return;
+		if (remoteMap) {
+			const target = { center: [position.longitude, position.latitude], essential: true, duration: 700 };
+			/* En 3D: desplazamiento a zoom constante (flyTo aleja y vuelve a acercar, y recarga muchas teselas de edificios) */
+			if (remoteMode === "3d") remoteMap.easeTo(target); else remoteMap.flyTo(target);
+			return;
+		}
+		const point = project(position.longitude, position.latitude);
+		offsetX = 500 - point.x * scale;
+		offsetY = 700 - point.y * scale;
+		scheduleTransform();
+	}
+	function setRoute(path, geometry = null) {
+		const positions = path.map(id => hospitalPositions.get(id)).filter(Boolean);
+		const coordinates = Array.isArray(geometry) && geometry.length > 1
+			? geometry
+			: positions.map(position => [position.longitude, position.latitude]);
+		if (routeAnimationFrame) cancelAnimationFrame(routeAnimationFrame);
+		if (remoteMap) {
+			if (!remoteReady) { pendingRoute = { path, geometry }; return; }
+			const source = remoteMap.getSource("calculated-route");
+			if (coordinates.length < 2) {
+				if (source) source.setData({ type: "Feature", geometry: null });
+				return;
+			}
+			const data = { type: "Feature", geometry: { type: "LineString", coordinates } };
+			if (source) source.setData(data);
+			else {
+				remoteMap.addSource("calculated-route", { type: "geojson", data, lineMetrics: true });
+				remoteMap.addLayer({ id: "calculated-route-line", type: "line", source: "calculated-route", paint: { "line-gradient": routeGradient(0), "line-width": 6, "line-opacity": 0.9, "line-blur": 0.3 } });
+			}
+			remoteMap.setPaintProperty("calculated-route-line", "line-gradient", routeGradient(0));
+			const startTime = performance.now();
+			const duration = 1200;
+			const animateRemoteRoute = timestamp => {
+				const progress = Math.max(0, Math.min(1, (timestamp - startTime) / duration));
+				remoteMap.setPaintProperty("calculated-route-line", "line-gradient", routeGradient(progress));
+				if (progress < 1) routeAnimationFrame = requestAnimationFrame(animateRemoteRoute);
+			};
+			routeAnimationFrame = requestAnimationFrame(animateRemoteRoute);
+			return;
+		}
+		if (!routeLayer) return;
+		routeLayer.replaceChildren();
+		if (coordinates.length > 1) {
+			routeLayer.appendChild(line(coordinates, "calculated-route-halo"));
+			routeLayer.appendChild(line(coordinates, "calculated-route"));
+		}
+	}
+	function mark(id, type) {
+		if (remoteMap) {
+			remoteMarkers.forEach((marker, markerId) => {
+				const element = marker.getElement();
+				const selected = markerId === id;
+				element.classList.remove(type);
+				if (selected) {
+					requestAnimationFrame(() => element.classList.add(type));
+				}
+			});
+			return;
+		}
+		localMarkers.forEach((marker, markerId) => {
+			const selected = markerId === id;
+			marker.classList.remove(type);
+			if (selected) {
+				requestAnimationFrame(() => marker.classList.add(type));
+			}
+		});
+	}
+	function enableRemoteMap(container, hospitals, connections, key, onSelect) {
+		if (remoteMap) return Promise.resolve();
+		hospitalPositions = new Map(hospitals.map(hospital => [hospital.id, { longitude: hospital.longitude, latitude: hospital.latitude }]));
+		container.replaceChildren();
+		remoteMap = new maplibregl.Map({
+			container,
+			style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${encodeURIComponent(key)}`,
+			center: [-74.08, 4.65], zoom: 11.3, pitch: 0, bearing: 0,
+			maxBounds: [[-74.23, 4.45], [-73.98, 4.82]],
+			maxZoom: 16,
+			renderWorldCopies: false,
+			antialias: false,
+			fadeDuration: 120,
+			pixelRatio: pixelRatioFor(remoteMode),
+			refreshExpiredTiles: false
+		});
+		remoteMap.on("styleimagemissing", event => {
+			if (remoteMap.hasImage(event.id)) return;
+			remoteMap.addImage(event.id, {
+				width: 1,
+				height: 1,
+				data: new Uint8Array(4)
+			});
+		});
+		return new Promise((resolve, reject) => {
+			remoteMap.once("error", event => { if (event.error) reject(event.error); });
+		remoteMap.on("load", () => {
+			remoteMap.addSource("hospital-connections", {
+				type: "geojson",
+				data: {
+					type: "FeatureCollection",
+					features: connections.map(connection => {
+						const source = hospitalPositions.get(connection.source);
+						const target = hospitalPositions.get(connection.target);
+						if (!source || !target) return null;
+						return {
+						type: "Feature",
+						geometry: {
+							type: "LineString",
+							coordinates: [
+								[source.longitude, source.latitude],
+								[target.longitude, target.latitude]
+							]
+						}
+						};
+					}).filter(Boolean)
+				}
+			});
+			remoteMap.addLayer({ id: "hospital-connections-line", type: "line", source: "hospital-connections", paint: { "line-color": "#52717a", "line-width": 1.5, "line-opacity": 0.62, "line-dasharray": [2, 2] } });
+			const styleLayers = remoteMap.getStyle().layers || [];
+			const buildingLayer = styleLayers.find(layer => layer.type === "fill" && layer['source-layer'] === "building");
+			if (buildingLayer) {
+				remoteMap.addLayer({
+					id: BUILDINGS_LAYER,
+					type: "fill-extrusion",
+					source: buildingLayer.source,
+					"source-layer": "building",
+					minzoom: 13,
+					filter: [">", ["coalesce", ["get", "render_height"], ["get", "height"], 0], 6],
+					layout: { visibility: "none" },
+					paint: {
+						/* Color opaco equivalente a #b8aaa0 al 72 % sobre el mapa: con opacidad < 1 MapLibre dibuja las
+						   extrusiones en una textura aparte en cada frame (muy costoso) y se ven las paredes traslúcidas. */
+						"fill-extrusion-color": "#cabfb6",
+						/* Los edificios crecen con el zoom (13.3 → 14): sin saltos al entrar en la capa. Es una propiedad de
+						   pintura: no recarga teselas. */
+						"fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13.3, 0, 14, ["coalesce", ["get", "render_height"], ["get", "height"], 8]],
+						"fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 13.3, 0, 14, ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0]],
+						"fill-extrusion-opacity": 1,
+						"fill-extrusion-vertical-gradient": false
+					}
+				});
+			}
+			hospitals.forEach(hospital => {
+				const element = document.createElement("button");
+				element.type = "button"; element.className = "remote-hospital-marker"; element.title = hospital.name; element.setAttribute("aria-label", hospital.name); element.dataset.id = hospital.id; element.innerHTML = '<span class="remote-marker-content"><span class="remote-marker-backdrop" aria-hidden="true"></span><span class="material-symbols-rounded remote-marker-hospital" aria-hidden="true">medical_services</span><span class="material-symbols-rounded remote-marker-location" aria-hidden="true">location_on</span></span>';
+				element.addEventListener("click", () => onSelect(hospital.id));
+				const marker = new maplibregl.Marker({ element }).setLngLat([hospital.longitude, hospital.latitude]).addTo(remoteMap);
+				remoteMarkers.set(hospital.id, marker);
+			});
+			remoteMap.on("movestart", () => {
+				documentRoot.classList.add("is-map-moving");
+			});
+			remoteMap.on("moveend", () => {
+				documentRoot.classList.remove("is-map-moving");
+			});
+			remoteReady = true;
+			setRemoteMode(remoteMode);
+			if (pendingRoute) { const route = pendingRoute; pendingRoute = null; setRoute(route.path, route.geometry); }
+			resolve();
+		});
+		});
+	}
+	function setRemoteMode(mode) {
+		remoteMode = mode;
+		if (!remoteMap) return;
+		const is3d = mode === "3d";
+		clearTimeout(buildingsTimer);
+		const ratio = pixelRatioFor(mode);
+		if (typeof remoteMap.setPixelRatio === "function" && remoteMap.getPixelRatio?.() !== ratio) remoteMap.setPixelRatio(ratio);
+		if (is3d) setBuildingsVisible(true); // una sola vez, al entrar en 3D
+		else buildingsTimer = setTimeout(() => { if (remoteMode === "2d") setBuildingsVisible(false); }, 700); // al terminar de aplanar
+		remoteMap.easeTo({ center: [-74.08, 4.65], zoom: is3d ? 14 : 11.3, pitch: is3d ? 45 : 0, bearing: is3d ? -20 : 0, duration: 650, essential: true });
+	}
+	function isRemote() { return Boolean(remoteMap); }
+	function getMode() { return remoteMode; }
+	return { init, setZoom, zoomIn, zoomOut, rotate, reset, focusHospital, setRoute, mark, enableRemoteMap, setRemoteMode, isRemote, getMode };
+})();

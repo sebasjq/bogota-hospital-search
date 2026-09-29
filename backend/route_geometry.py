@@ -1,11 +1,15 @@
 import json
 import threading
+import sys
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+if getattr(sys, "frozen", False):
+    DATA_DIR = Path(sys.executable).resolve().parent / "data"
+else:
+    DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 CACHE_PATH = DATA_DIR / "connection_routes.json"
 _cache_lock = threading.Lock()
 
@@ -79,7 +83,10 @@ def route_geometry(path, hospitals):
                 cache_changed = True
             segments.append(coordinates)
         if cache_changed:
-            _save_cache(cache)
+            try:
+                _save_cache(cache)
+            except OSError:
+                pass
 
     combined = []
     for segment in segments:

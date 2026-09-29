@@ -1,7 +1,13 @@
 import json
+import sys
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+# Dentro del .exe (PyInstaller) los datos están junto a backend.exe;
+# en desarrollo, en la carpeta "data" del proyecto.
+if getattr(sys, "frozen", False):
+    DATA_DIR = Path(sys.executable).resolve().parent / "data"
+else:
+    DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 # Función para construir el grafo dirigido con aristas de ida y vuelta
 def load_graph():

@@ -4,7 +4,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
+if getattr(sys, "frozen", False):
+    ROOT_DIR = Path(sys.executable).resolve().parent
+else:
+    ROOT_DIR = Path(__file__).resolve().parents[1]
 INTERFACE_DIR = ROOT_DIR / "interface"
 DATA_DIR = ROOT_DIR / "data"
 sys.path.insert(0, str(ROOT_DIR))
@@ -127,6 +130,8 @@ class IntegrationHandler(BaseHTTPRequestHandler):
         except (json.JSONDecodeError, ValueError, RouteGeometryError) as error:
             self.send_json(400, {"error": str(error)})
         except Exception:
+            import traceback
+            traceback.print_exc()
             self.send_json(500, {"error": "No fue posible calcular la ruta."})
 
     def serve_static(self, request_path):
