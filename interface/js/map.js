@@ -1,5 +1,15 @@
 const mapView = (() => {
 	const bounds = { west: -74.23, east: -73.98, south: 4.45, north: 4.82 };
+	const documentRoot = document.documentElement; // recibe .is-map-moving mientras el mapa se mueve
+	const ROUTE_COLOR = "rgba(0, 122, 255, 1)";
+	const ROUTE_CLEAR = "rgba(0, 122, 255, 0)";
+	/* Degradado por progreso: revela la ruta sin volver a enviar la geometría al worker en cada frame. */
+	function routeGradient(progress) {
+		const line = ["line-progress"];
+		if (progress >= 0.999) return ["interpolate", ["linear"], line, 0, ROUTE_COLOR, 1, ROUTE_COLOR];
+		if (progress <= 0) return ["interpolate", ["linear"], line, 0, ROUTE_CLEAR, 1, ROUTE_CLEAR];
+		return ["interpolate", ["linear"], line, 0, ROUTE_COLOR, progress, ROUTE_COLOR, Math.min(progress + 0.001, 0.9999), ROUTE_CLEAR, 1, ROUTE_CLEAR];
+	}
 	let svg; let viewport; let remoteMap; let remoteMarkers = new Map(); let localMarkers = new Map(); let hospitalPositions = new Map(); let remoteMode = "2d"; let scale = 1; let rotation = 0; let offsetX = 0; let offsetY = 0; let dragStart; let pendingTransform; let transformFrame;
 	let connectionLayer; let routeLayer; let routeAnimationFrame;
 	function project(longitude, latitude) { return { x: ((longitude - bounds.west) / (bounds.east - bounds.west)) * 1000, y: ((bounds.north - latitude) / (bounds.north - bounds.south)) * 1400 }; }
@@ -29,11 +39,11 @@ const mapView = (() => {
 		routeLayer = document.createElementNS("http://www.w3.org/2000/svg", "g"); routeLayer.setAttribute("class", "route-layer");
 		viewport.appendChild(connectionLayer);
 		viewport.appendChild(routeLayer);
-		hospitals.forEach(hospital => { const point = project(hospital.longitude, hospital.latitude); const group = document.createElementNS("http://www.w3.org/2000/svg", "g"); group.setAttribute("class", "hospital-marker"); group.dataset.id = hospital.id; group.setAttribute("role", "button"); group.setAttribute("tabindex", "0"); group.setAttribute("aria-label", hospital.name); group.setAttribute("transform", `translate(${point.x} ${point.y})`); group.innerHTML = '<g class="marker-content"><rect class="marker-backdrop" x="-12" y="-12" width="24" height="24" rx="6"></rect><path class="marker-hospital" d="M-3.5-9h7v5.5H9v7H3.5V9h-7V3.5H-9v-7h5.5z"></path><path class="marker-location" d="M0 11C-1.7 8.2-7 3.4-7-1.5A7 7 0 1 1 7-1.5C7 3.4 1.7 8.2 0 11Zm0-9.2A2.8 2.8 0 1 0 0-3.8a2.8 2.8 0 0 0 0 5.6Z"></path></g>'; const selectMarker = () => onSelect(hospital.id); group.addEventListener("click", selectMarker); group.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectMarker(); } }); localMarkers.set(hospital.id, group); viewport.appendChild(group); });
+		hospitals.forEach(hospital => { const point = project(hospital.longitude, hospital.latitude); const group = document.createElementNS("http://www.w3.org/2000/svg", "g"); group.setAttribute("class", "hospital-marker"); group.dataset.id = hospital.id; group.setAttribute("role", "button"); group.setAttribute("tabindex", "0"); group.setAttribute("aria-label", hospital.name); group.setAttribute("transform", `translate(${point.x} ${point.y})`); group.innerHTML = '<g class="marker-content"><rect class="marker-shadow" x="-12" y="-10" width="24" height="24" rx="6"></rect><rect class="marker-backdrop" x="-12" y="-12" width="24" height="24" rx="6"></rect><path class="marker-hospital" d="M-3.5-9h7v5.5H9v7H3.5V9h-7V3.5H-9v-7h5.5z"></path><path class="marker-location" d="M0 11C-1.7 8.2-7 3.4-7-1.5A7 7 0 1 1 7-1.5C7 3.4 1.7 8.2 0 11Zm0-9.2A2.8 2.8 0 1 0 0-3.8a2.8 2.8 0 0 0 0 5.6Z"></path></g>'; const selectMarker = () => onSelect(hospital.id); group.addEventListener("click", selectMarker); group.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectMarker(); } }); localMarkers.set(hospital.id, group); viewport.appendChild(group); });
 		svg.appendChild(viewport); container.appendChild(svg);
 		svg.addEventListener("wheel", event => { event.preventDefault(); setZoom(scale + (event.deltaY < 0 ? 0.15 : -0.15)); }, { passive: false });
-		svg.addEventListener("pointerdown", event => { dragStart = { x: event.clientX - offsetX, y: event.clientY - offsetY }; svg.setPointerCapture(event.pointerId); });
-		svg.addEventListener("pointermove", event => { if (dragStart) { offsetX = event.clientX - dragStart.x; offsetY = event.clientY - dragStart.y; scheduleTransform(); } }); svg.addEventListener("pointerup", () => { dragStart = undefined; }); svg.addEventListener("pointercancel", () => { dragStart = undefined; });
+		svg.addEventListener("pointerdown", event => { dragStart = { x: event.clientX - offsetX, y: event.clientY - offsetY }; svg.setPointerCapture(event.pointerId); documentRoot.classList.add("is-map-moving"); });
+		svg.addEventListener("pointermove", event => { if (dragStart) { offsetX = event.clientX - dragStart.x; offsetY = event.clientY - dragStart.y; scheduleTransform(); } }); svg.addEventListener("pointerup", () => { dragStart = undefined; documentRoot.classList.remove("is-map-moving"); }); svg.addEventListener("pointercancel", () => { dragStart = undefined; documentRoot.classList.remove("is-map-moving"); });
 	}
 	function setZoom(nextScale) { if (remoteMap) { remoteMap.zoomTo(Math.min(16, Math.max(10, remoteMap.getZoom() + (nextScale > 1 ? 1 : -1))), { duration: 180 }); return; } scale = Math.min(3, Math.max(0.8, nextScale)); scheduleTransform(); }
 	function zoomIn() { setZoom(remoteMap ? 2 : scale + 0.2); }
@@ -65,25 +75,18 @@ const mapView = (() => {
 				if (source) source.setData({ type: "Feature", geometry: null });
 				return;
 			}
-			const data = { type: "Feature", geometry: { type: "LineString", coordinates: [coordinates[0], coordinates[0]] } };
+			const data = { type: "Feature", geometry: { type: "LineString", coordinates } };
 			if (source) source.setData(data);
 			else {
-				remoteMap.addSource("calculated-route", { type: "geojson", data });
-				remoteMap.addLayer({ id: "calculated-route-line", type: "line", source: "calculated-route", paint: { "line-color": "#007aff", "line-width": 6, "line-opacity": 0.9, "line-blur": 0.3 } });
+				remoteMap.addSource("calculated-route", { type: "geojson", data, lineMetrics: true });
+				remoteMap.addLayer({ id: "calculated-route-line", type: "line", source: "calculated-route", paint: { "line-gradient": routeGradient(0), "line-width": 6, "line-opacity": 0.9, "line-blur": 0.3 } });
 			}
-			if (coordinates.length < 2) return;
+			remoteMap.setPaintProperty("calculated-route-line", "line-gradient", routeGradient(0));
 			const startTime = performance.now();
 			const duration = 1200;
 			const animateRemoteRoute = timestamp => {
-				const progress = Math.min(1, (timestamp - startTime) / duration);
-				const segment = progress * (coordinates.length - 1);
-				const index = Math.min(Math.floor(segment), coordinates.length - 2);
-				const fraction = progress === 1 ? 1 : segment - index;
-				const visibleCoordinates = coordinates.slice(0, index + 1).map(point => [point[0], point[1]]);
-				const current = coordinates[index];
-				const next = coordinates[index + 1];
-				visibleCoordinates.push([current[0] + (next[0] - current[0]) * fraction, current[1] + (next[1] - current[1]) * fraction]);
-				remoteMap.getSource("calculated-route").setData({ type: "Feature", geometry: { type: "LineString", coordinates: visibleCoordinates } });
+				const progress = Math.max(0, Math.min(1, (timestamp - startTime) / duration));
+				remoteMap.setPaintProperty("calculated-route-line", "line-gradient", routeGradient(progress));
 				if (progress < 1) routeAnimationFrame = requestAnimationFrame(animateRemoteRoute);
 			};
 			routeAnimationFrame = requestAnimationFrame(animateRemoteRoute);
@@ -127,7 +130,9 @@ const mapView = (() => {
 			maxBounds: [[-74.23, 4.45], [-73.98, 4.82]],
 			maxZoom: 16,
 			renderWorldCopies: false,
-			antialias: false
+			antialias: false,
+			fadeDuration: 120,
+			pixelRatio: Math.min(window.devicePixelRatio || 1, 2)
 		});
 		remoteMap.on("styleimagemissing", event => {
 			if (remoteMap.hasImage(event.id)) return;
@@ -190,9 +195,11 @@ const mapView = (() => {
 				remoteMarkers.set(hospital.id, marker);
 			});
 			remoteMap.on("movestart", () => {
+				documentRoot.classList.add("is-map-moving");
 				if (remoteMode === "3d" && remoteMap.getLayer("bogota-buildings-3d")) remoteMap.setLayoutProperty("bogota-buildings-3d", "visibility", "none");
 			});
 			remoteMap.on("moveend", () => {
+				documentRoot.classList.remove("is-map-moving");
 				if (remoteMode === "3d" && remoteMap.getLayer("bogota-buildings-3d")) remoteMap.setLayoutProperty("bogota-buildings-3d", "visibility", "visible");
 			});
 				setRemoteMode(remoteMode);

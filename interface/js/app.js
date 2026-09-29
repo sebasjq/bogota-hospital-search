@@ -33,6 +33,15 @@ const NOTICE_DURATION = 2800;   // ms que permanece cada aviso
 const NOTICE_MAX_VISIBLE = 3;   // máximo de avisos apilados
 const NOTICE_EXIT_MS = 340;     // debe coincidir con la salida en CSS (.notice-item.is-leaving)
 let activeNotices = [];         // el más nuevo primero
+
+/* Indicador de carga centrado (reemplaza al aviso "cargando" de la pila) */
+const loadingOverlay = document.querySelector("#loading-overlay");
+const LOADING_MIN_MS = 450;     // tiempo mínimo visible para que no parpadee
+const ROUTE_MIN_LOADING_MS = 1200; // el cálculo siempre tarda al menos esto, aunque el backend responda al instante
+const LOADING_MAX_MS = 30000;   // seguro: se cierra solo si nadie lo cierra
+let loadingShownAt = 0;
+let loadingHideTimer;
+let loadingFailsafe;
 let lastRouteResult = window.location.hash === "#tree" ? window.treeResult : undefined;
 
 function alignMapToolbar() {
@@ -207,9 +216,33 @@ function dismissNotice(notice) {
 	setTimeout(() => notice.el.remove(), NOTICE_EXIT_MS + 60);
 }
 
+function showLoading() {
+	clearTimeout(loadingHideTimer);
+	clearTimeout(loadingFailsafe);
+	loadingShownAt = performance.now();
+	loadingOverlay.setAttribute("aria-hidden", "false");
+	loadingOverlay.classList.add("is-visible");
+	loadingFailsafe = setTimeout(hideLoading, LOADING_MAX_MS);
+}
+
+function hideLoading() {
+	if (!loadingOverlay.classList.contains("is-visible")) return;
+	clearTimeout(loadingHideTimer);
+	clearTimeout(loadingFailsafe);
+	const remaining = Math.max(0, LOADING_MIN_MS - (performance.now() - loadingShownAt));
+	loadingHideTimer = setTimeout(() => {
+		loadingOverlay.classList.remove("is-visible");
+		loadingOverlay.setAttribute("aria-hidden", "true");
+	}, remaining);
+}
+
 function showNotice(message, icon = "check", tone = "") {
-	// Un aviso de "cargando" se reemplaza por el siguiente en vez de apilarse.
-	activeNotices.filter(item => item.tone === "is-loading").forEach(dismissNotice);
+	// "Cargando" se muestra como indicador centrado, no como aviso apilado.
+	if (tone === "is-loading") {
+		showLoading();
+		return;
+	}
+	hideLoading();
 
 	// Mismo mensaje repetido: solo reinicia el tiempo del que ya está al frente.
 	const front = activeNotices[0];
@@ -531,8 +564,14 @@ async function loadHospitals() {
 
 	try {
 
-		const response =
-			await fetch("../data/hospitals.json");
+		// MapLibre empieza a descargarse ya, en paralelo con los JSON.
+		const mapLibrePromise = window.APP_CONFIG?.mapTilerKey ? loadMapLibre() : null;
+		mapLibrePromise?.catch(() => {});
+
+		const [response, connectionsResponse] = await Promise.all([
+			fetch("../data/hospitals.json"),
+			fetch("../data/connections.json")
+		]);
 
 		if (!response.ok) {
 			throw new Error(
@@ -542,7 +581,6 @@ async function loadHospitals() {
 
 		state.hospitals =
 			await response.json();
-		const connectionsResponse = await fetch("../data/connections.json");
 		if (!connectionsResponse.ok) throw new Error("No se pudo leer connections.json");
 		const connections = await connectionsResponse.json();
 
@@ -566,7 +604,7 @@ async function loadHospitals() {
 
 			try {
 
-				await loadMapLibre();
+				await mapLibrePromise;
 
 				await mapView.enableRemoteMap(
 					mapContainer,
@@ -661,6 +699,7 @@ routeForm.addEventListener(
 		calculateRoute.disabled = true;
 		calculateRoute.classList.add("is-loading");
 		setRouteStatus("Calculando ruta...", "is-loading");
+		const minLoading = new Promise(resolve => setTimeout(resolve, ROUTE_MIN_LOADING_MS));
 		hideRouteResult();
 		mapView.setRoute([]);
 		try {
@@ -682,30 +721,95 @@ routeForm.addEventListener(
 			if (!Array.isArray(result.route_geometry) || result.route_geometry.length < 2) {
 				throw new Error("No se obtuvo la geometría de las calles para esta ruta.");
 			}
+			await minLoading; // espera el tiempo mínimo antes de mostrar el resultado
 			mapView.setRoute(result.path, result.route_geometry);
 			showRouteResult(result);
 			setRouteStatus("Ruta calculada correctamente.", "is-success");
 		} catch (error) {
+			await minLoading; // los errores rápidos también respetan el tiempo mínimo
 			setRouteStatus(error.message || "No se pudo comunicar con el backend.", "is-error");
 		} finally {
 			calculateRoute.disabled = !state.origin || !state.destination || !state.model;
 			calculateRoute.classList.remove("is-loading");
+			hideLoading();
 		}
 	}
 );
 
-viewTreeButton.addEventListener("click", () => {
+/* vis-network y tree.js solo se descargan la primera vez que se abre el árbol. */
+let treeScriptsPromise;
+function loadScript(src) {
+	return new Promise((resolve, reject) => {
+		const script = document.createElement("script");
+		script.src = src;
+		script.onload = resolve;
+		script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
+		document.head.appendChild(script);
+	});
+}
+function ensureTreeScripts() {
+	if (window.renderTree) return Promise.resolve();
+	treeScriptsPromise ??= (async () => {
+		// tree.js pinta window.treeResult (datos de ejemplo) al cargarse; se evita esa pintura inicial.
+		const sample = window.treeResult;
+		window.treeResult = undefined;
+		try {
+			if (!window.vis) await loadScript("js/vendor/vis-network.min.js");
+			await loadScript("js/tree.js");
+		} finally {
+			window.treeResult = sample;
+		}
+	})().catch(error => { treeScriptsPromise = undefined; throw error; });
+	return treeScriptsPromise;
+}
+
+viewTreeButton.addEventListener("click", async () => {
 	if (!lastRouteResult) return;
-	treeDialog.showModal();
+	openTreeDialog();
+	try {
+		await ensureTreeScripts();
+	} catch (error) {
+		console.error(error);
+		return;
+	}
 	requestAnimationFrame(() => renderTree(lastRouteResult));
 });
 
 treeZoomInButton.addEventListener("click", () => window.zoomTree?.(1.2));
 treeZoomOutButton.addEventListener("click", () => window.zoomTree?.(0.8));
 treeFitButton.addEventListener("click", () => window.fitTree?.());
-closeTreeButton.addEventListener("click", () => treeDialog.close());
+/* Apertura/cierre animados: el <dialog> sigue [open] hasta que termina la transición de salida. */
+let treeClosing = false;
+function openTreeDialog() {
+	if (treeDialog.open && !treeClosing) return;
+	treeClosing = false;
+	if (!treeDialog.open) treeDialog.showModal();
+	void treeDialog.offsetWidth; // fija el estado oculto antes de animar la entrada
+	treeDialog.classList.add("is-visible");
+}
+function closeTreeDialog() {
+	if (!treeDialog.open || treeClosing) return;
+	treeClosing = true;
+	treeDialog.classList.remove("is-visible");
+	let done = false;
+	const finish = () => {
+		if (done) return;
+		done = true;
+		treeDialog.removeEventListener("transitionend", onEnd);
+		if (treeClosing) treeDialog.close();
+		treeClosing = false;
+	};
+	const onEnd = event => { if (event.target === treeDialog && event.propertyName === "transform") finish(); };
+	treeDialog.addEventListener("transitionend", onEnd);
+	setTimeout(finish, 600);
+}
+closeTreeButton.addEventListener("click", closeTreeDialog);
 treeDialog.addEventListener("click", event => {
-	if (event.target === treeDialog) treeDialog.close();
+	if (event.target === treeDialog) closeTreeDialog();
+});
+treeDialog.addEventListener("cancel", event => { // tecla Esc
+	event.preventDefault();
+	closeTreeDialog();
 });
 
 setupModelPicker();

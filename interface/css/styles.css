@@ -14,6 +14,12 @@
 	--route-label-size: 15px;
 	--control-icon-size: 24px;
 	--map-controls-width: 232px;
+
+	/* Scrim compartido: estado de carga y pop-up del árbol */
+	--scrim-color: rgba(24, 40, 46, 0.2);
+	--scrim-blur: 8px;
+	--scrim-in: 360ms;
+	--scrim-out: 320ms;
 }
 
 html,
@@ -737,7 +743,6 @@ body {
 	stroke-width: 8;
 	stroke-linecap: round;
 	stroke-linejoin: round;
-	filter: drop-shadow(0 2px 4px rgba(0, 74, 173, 0.28));
 	stroke-dasharray: 1;
 	stroke-dashoffset: 1;
 	animation: route-draw 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -749,7 +754,6 @@ body {
 	stroke-width: 18;
 	stroke-linecap: round;
 	stroke-linejoin: round;
-	filter: blur(2px);
 	stroke-dasharray: 1;
 	stroke-dashoffset: 1;
 	animation: route-draw 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -758,11 +762,20 @@ body {
 /*
  * Pop-up del árbol: un solo contenedor visual hecho de dos secciones sin espacio entre ellas.
  *  - Arriba: blanco sólido, solo esquinas superiores redondeadas, línea inferior de separación.
- *  - Abajo: blur tipo notificación iOS, solo esquinas inferiores redondeadas.
- * El <dialog> no lleva opacity/filter/backdrop-filter: así el blur de la sección inferior
- * sigue viendo el mapa. La animación de entrada usa solo transform.
+ *  - Abajo: Liquid Glass translúcido, solo esquinas inferiores redondeadas.
+ *
+ * Animación (controlada por la clase .is-visible desde app.js):
+ *  - El <dialog> permanece [open] durante la salida; solo se llama a close() al terminar. Así el
+ *    layout (flex en columna) nunca cambia a mitad de la animación y el contenedor sale entero.
+ *  - El <dialog> NO lleva opacity/filter/clip-path/backdrop-filter (romperían el vidrio de la
+ *    sección inferior): entrada y salida usan solo transform.
+ *  - El fondo (::backdrop) reutiliza exactamente el scrim del estado de carga
+ *    (--scrim-color / --scrim-blur y los mismos tiempos).
  */
 .tree-dialog {
+	--tree-radius: 30px;
+	--tree-close-size: 36px;
+
 	width: min(760px, calc(100vw - 32px));
 	height: min(480px, 62vh);
 	max-width: none;
@@ -770,80 +783,123 @@ body {
 	padding: 0;
 	overflow: visible;
 	border: 0;
-	border-radius: 22px;
+	border-radius: var(--tree-radius);
 	background: transparent;
-	box-shadow: 0 20px 60px rgba(35, 57, 62, 0.28);
+	flex-direction: column; /* fijo: no depende de [open] */
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.6),
+		0 12px 40px rgba(35, 57, 62, 0.28);
+
+	/* Estado oculto: abajo, fuera de pantalla */
+	transform-origin: center bottom;
+	transform: translateY(calc(50vh + 100%)) scale(0.96);
+	will-change: transform;
+	transition: transform 380ms cubic-bezier(0.4, 0, 1, 1);
 }
 
 .tree-dialog[open] {
 	display: flex;
-	flex-direction: column;
-	animation: tree-dialog-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.tree-dialog::backdrop { background: rgba(35, 57, 62, 0.2); backdrop-filter: blur(var(--blur-control)); }
-
-@keyframes tree-dialog-in {
-	from { transform: translateY(10px) scale(0.97); }
-	to   { transform: none; }
+.tree-dialog.is-visible {
+	transform: none;
+	transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* Fondo: mismo blur + oscurecimiento que .loading-overlay */
+.tree-dialog::backdrop {
+	background: rgba(24, 40, 46, 0);
+	-webkit-backdrop-filter: blur(0px);
+	backdrop-filter: blur(0px);
+	transition:
+		background-color var(--scrim-out) ease,
+		backdrop-filter var(--scrim-out) ease,
+		-webkit-backdrop-filter var(--scrim-out) ease;
+}
+
+.tree-dialog.is-visible::backdrop {
+	background: var(--scrim-color);
+	-webkit-backdrop-filter: blur(var(--scrim-blur));
+	backdrop-filter: blur(var(--scrim-blur));
+	transition:
+		background-color var(--scrim-in) ease,
+		backdrop-filter var(--scrim-in) ease,
+		-webkit-backdrop-filter var(--scrim-in) ease;
+}
+
+/* ---------- Sección superior ---------- */
 
 .tree-dialog-header {
 	display: flex;
 	flex: 0 0 auto;
 	align-items: center;
 	justify-content: space-between;
-	min-height: 76px;
-	padding: 10px 18px 6px 25px;
+	height: calc(var(--tree-radius) * 2);
+	padding: 0 calc(var(--tree-radius) - var(--tree-close-size) / 2) 0 var(--tree-radius);
 	background: #fff;
 	border-bottom: 1px solid rgba(104, 126, 145, 0.24);
-	border-radius: 22px 22px 0 0;
+	border-radius: var(--tree-radius) var(--tree-radius) 0 0;
 }
 
 .tree-dialog-header h2 {
 	margin: 0;
 	color: var(--apple-blue);
 	font-family: "DM Sans", var(--font-ui);
-	font-size: 30px;
-	font-weight: 200;
+	font-size: 28px;
+	font-weight: 300;
 	letter-spacing: 0;
 	line-height: 1.1;
 }
 
+/* Botón sencillo: círculo con borde azul, como los desplegables (borde 1px, fondo transparente) */
 .tree-dialog-close {
 	display: flex;
+	flex: 0 0 auto;
 	align-items: center;
 	justify-content: center;
-	width: 42px;
-	height: 42px;
+	width: var(--tree-close-size);
+	height: var(--tree-close-size);
 	padding: 0;
-	border: 0;
+	border: 1px solid rgba(0, 122, 255, 0.55);
 	border-radius: 50%;
-	background: rgba(142, 142, 147, 0.14);
+	background: transparent;
 	color: var(--apple-blue);
 	cursor: pointer;
-	transition: background 160ms ease;
+	transition: background-color 160ms ease, border-color 160ms ease;
 }
 
-.tree-dialog-close:hover { background: rgba(0, 122, 255, 0.12); }
-.tree-dialog-close:active { background: rgba(0, 122, 255, 0.2); }
+.tree-dialog-close .material-symbols-rounded {
+	font-size: 20px !important;
+}
+
+.tree-dialog-close:hover {
+	background: rgba(0, 122, 255, 0.08);
+	border-color: rgba(0, 122, 255, 0.8);
+}
+
+.tree-dialog-close:active {
+	background: rgba(0, 122, 255, 0.14);
+}
+
+/* ---------- Sección inferior: Liquid Glass más transparente ---------- */
 
 .tree-dialog-body {
 	position: relative;
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow: hidden;
-	border: 1px solid rgba(255, 255, 255, 0.62);
+	border: 1px solid rgba(255, 255, 255, 0.5);
 	border-top: 0;
-	border-radius: 0 0 22px 22px;
+	border-radius: 0 0 var(--tree-radius) var(--tree-radius);
 	background:
-		radial-gradient(circle at 16% 10%, rgba(255, 255, 255, 0.5), transparent 38%),
-		linear-gradient(150deg, rgba(246, 250, 252, 0.55), rgba(214, 229, 237, 0.42));
+		radial-gradient(circle at 14% 8%, rgba(255, 255, 255, 0.28), transparent 42%),
+		linear-gradient(150deg, rgba(255, 255, 255, 0.16), rgba(214, 229, 237, 0.08));
 	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.55),
-		inset 0 -12px 24px rgba(255, 255, 255, 0.12);
-	backdrop-filter: blur(40px) saturate(180%);
-	-webkit-backdrop-filter: blur(10px) saturate(140%);
+		inset 0 1px 0 rgba(255, 255, 255, 0.5),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+		inset 0 -14px 28px rgba(255, 255, 255, 0.08);
+	-webkit-backdrop-filter: blur(12px) saturate(160%);
+	backdrop-filter: blur(10px) saturate(160%);
 }
 
 .tree-view {
@@ -861,9 +917,8 @@ body {
 }
 
 @media (max-width: 520px) {
-	.tree-dialog { height: min(480px, 70vh); }
-	.tree-dialog-header { min-height: 68px; padding-left: 20px; }
-	.tree-dialog-header h2 { font-size: 26px; }
+	.tree-dialog { --tree-radius: 26px; height: min(480px, 70vh); }
+	.tree-dialog-header h2 { font-size: 24px; }
 	.tree-dialog-controls { right: 12px; bottom: 12px; }
 }
 
@@ -1096,9 +1151,13 @@ button:focus-visible {
 	outline: none;
 }
 
+/* Sombra como forma simple: los filtros SVG sobre un mapa que se mueve son caros. */
+.marker-shadow {
+	fill: rgba(0, 0, 0, 0.22);
+}
+
 .marker-backdrop {
 	fill: #fff;
-	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
 }
 
 .marker-hospital {
@@ -1125,16 +1184,13 @@ button:focus-visible {
 	animation: hospital-marker-float 1.8s ease-in-out infinite;
 }
 
-.hospital-marker.is-origin .marker-backdrop {
-	filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.42));
+.hospital-marker.is-origin .marker-shadow,
+.hospital-marker.is-destination .marker-shadow {
+	fill: rgba(0, 0, 0, 0.32);
 }
 
 .hospital-marker.is-origin .marker-hospital {
 	fill: #007aff;
-}
-
-.hospital-marker.is-destination .marker-backdrop {
-	filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.42));
 }
 
 .hospital-marker.is-destination .marker-hospital {
@@ -1170,7 +1226,7 @@ button:focus-visible {
 	height: 28px;
 	background: #fff;
 	border-radius: 8px;
-	filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.42));
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.42);
 }
 
 .remote-marker-hospital {
@@ -1227,8 +1283,22 @@ button:focus-visible {
 	}
 }
 
-.remote-hospital-marker:hover {
-	filter: drop-shadow(0 4px 9px rgba(0, 0, 0, 0.32));
+/* box-shadow en el contenido (no filter en el marcador, que MapLibre mueve en cada frame) */
+.remote-hospital-marker:not(.is-origin):not(.is-destination):hover .remote-marker-content {
+	box-shadow: 0 4px 9px rgba(0, 0, 0, 0.32);
+}
+
+/* Marcadores animados: capa propia y pausa mientras el mapa se mueve */
+.remote-hospital-marker.is-origin .remote-marker-content,
+.remote-hospital-marker.is-destination .remote-marker-content,
+.hospital-marker.is-origin .marker-content,
+.hospital-marker.is-destination .marker-content {
+	will-change: transform;
+}
+
+.is-map-moving .remote-marker-content,
+.is-map-moving .marker-content {
+	animation-play-state: paused !important;
 }
 
 
@@ -1256,6 +1326,86 @@ button:focus-visible {
 
 
 /* =========================
+   INDICADOR DE CARGA
+========================= */
+
+/*
+ * Pantalla completa: difumina y oscurece ligeramente el fondo y centra una tarjeta blanca.
+ * Se anima con transiciones de backdrop-filter / background / transform (sin depender de
+ * opacity en el contenedor difuminado).
+ */
+.loading-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 40;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	visibility: hidden;
+	pointer-events: none;
+	background: rgba(24, 40, 46, 0);
+	-webkit-backdrop-filter: blur(0px);
+	backdrop-filter: blur(0px);
+	transition:
+		background-color 320ms ease,
+		backdrop-filter 320ms ease,
+		-webkit-backdrop-filter 320ms ease,
+		visibility 0s linear 320ms;
+}
+
+.loading-overlay.is-visible {
+	visibility: visible;
+	pointer-events: auto;
+	background: var(--scrim-color);
+	-webkit-backdrop-filter: blur(var(--scrim-blur));
+	backdrop-filter: blur(var(--scrim-blur));
+	transition:
+		background-color 360ms ease,
+		backdrop-filter 360ms ease,
+		-webkit-backdrop-filter 360ms ease,
+		visibility 0s;
+}
+
+.loading-card {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 92px;
+	height: 92px;
+	border-radius: 26px;
+	background: #fff;
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.6),
+		0 12px 40px rgba(35, 57, 62, 0.28);
+	opacity: 0;
+	transform: scale(0.82) translateY(8px);
+	transition:
+		opacity 220ms ease,
+		transform 260ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.loading-overlay.is-visible .loading-card {
+	opacity: 1;
+	transform: none;
+	transition:
+		opacity 260ms ease,
+		transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.loading-icon {
+	display: block !important;
+	color: var(--apple-blue);
+	font-size: 46px !important;
+	font-variation-settings: "FILL" 0, "wght" 350, "GRAD" 0, "opsz" 48;
+	animation: loading-spin 900ms linear infinite;
+}
+
+@keyframes loading-spin {
+	to { transform: rotate(360deg); }
+}
+
+
+/* =========================
    REDUCIR MOVIMIENTO
 ========================= */
 
@@ -1266,6 +1416,10 @@ button:focus-visible {
 	*::after {
 		transition-duration: 0.01ms !important;
 		animation-duration: 0.01ms !important;
+	}
+
+	.loading-icon {
+		animation-duration: 1.6s !important;
 	}
 
 }
