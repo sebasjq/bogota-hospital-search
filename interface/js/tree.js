@@ -15,18 +15,45 @@ function renderTree(result) {
             id(result.path.slice(0, index + 1)))
     );
 
+    // Paleta del árbol (lenguaje Apple / Liquid Glass)
+    const STYLE = {
+        text: "rgba(27, 43, 58, 0.82)",
+        textSecondary: "rgba(60, 72, 88, 0.55)",
+        blue: "#007aff",
+        node: {
+            background: "rgba(255, 255, 255, 0.82)",
+            border: "rgba(120, 144, 166, 0.55)",
+            hoverBackground: "rgba(255, 255, 255, 0.96)",
+            hoverBorder: "#4d91cf",
+            shadow: "rgba(35, 57, 62, 0.12)"
+        },
+        route: {
+            background: "rgba(226, 240, 255, 0.92)",
+            border: "#007aff",
+            hoverBackground: "#d3e8ff",
+            hoverBorder: "#006ee6",
+            shadow: "rgba(0, 122, 255, 0.22)"
+        },
+        edge: "rgba(84, 110, 133, 0.38)",
+        edgeRoute: "rgba(0, 122, 255, 0.85)"
+    };
+
     function makeNode(path, g, h = null, f = null) {
 
         const onRoute = routeNodes.has(id(path));
         const order = expansionOrder.get(id(path));
-        
+        const palette = onRoute ? STYLE.route : STYLE.node;
+
+        // Tarjeta compacta: nombre, orden de expansión y métricas en pocas líneas.
+        const metrics = [`g=${g.toFixed(3)}`];
+        if (h != null) metrics.push(`h=${h.toFixed(3)}`);
+
         const labelLines = [
             `<b>${path.at(-1)}</b>`,
-            ...(order !== undefined ? [`Expansión ${order}`] : []),
-            `g=${g.toFixed(3)}`
+            ...(order !== undefined ? [`<i>Expansión ${order}</i>`] : []),
+            metrics.join("  ·  ")
         ];
-        
-        if (h != null) labelLines.push(`h=${h.toFixed(3)}`);
+
         if (f != null) labelLines.push(`f=${f.toFixed(3)}`);
 
         return {
@@ -36,25 +63,20 @@ function renderTree(result) {
             title: path.join(" → "),
             level: path.length - 1,
 
-            color: onRoute
-                ? {
-                    background: "rgba(232, 244, 255, 0.96)",
-                    border: "#007aff",
-                    highlight: { background: "#dceeff", border: "#006ee6" }
-                }
-                : {
-                    background: "rgba(248, 252, 255, 0.9)",
-                    border: "#8eacc4",
-                    highlight: { background: "#edf6ff", border: "#4d91cf" }
-                },
+            color: {
+                background: palette.background,
+                border: palette.border,
+                highlight: { background: palette.hoverBackground, border: palette.hoverBorder },
+                hover: { background: palette.hoverBackground, border: palette.hoverBorder }
+            },
             borderWidth: onRoute ? 2 : 1,
-            borderWidthSelected: 2,
+            borderWidthSelected: 2.5,
             shadow: {
                 enabled: true,
-                color: "rgba(35, 57, 62, 0.12)",
-                size: 7,
+                color: palette.shadow,
+                size: onRoute ? 16 : 12,
                 x: 0,
-                y: 2
+                y: 4
             }
         };
     }
@@ -76,9 +98,9 @@ function renderTree(result) {
             id: `edge-${edges.length}`,
             from: id(edge.parent),
             to: id(edge.child),
-            color: onRoute ? "#4d91cf" : "#a6bbca",
-            width: onRoute ? 2 : 1.25,
-            smooth: { type: "cubicBezier", forceDirection: "vertical", roundness: 0.35 }
+            color: onRoute ? STYLE.edgeRoute : STYLE.edge,
+            width: onRoute ? 2.5 : 1.5,
+            smooth: { type: "cubicBezier", forceDirection: "vertical", roundness: 0.5 }
         });
     }   
 
@@ -92,14 +114,18 @@ function renderTree(result) {
         { nodes: [...nodes.values()], edges: edgeData },
         {
             nodes: {
-                shape: "circle",
-                margin: 14,
+                shape: "box",
+                shapeProperties: { borderRadius: 18 },
+                margin: { top: 12, right: 14, bottom: 12, left: 14 },
+                widthConstraint: { minimum: 132, maximum: 132 },
+                heightConstraint: { minimum: 84, valign: "middle" },
                 font: {
-                    size: 13,
+                    size: 12,
                     face: "DM Sans",
-                    color: "rgba(27, 43, 58, 0.82)",
+                    color: STYLE.text,
                     multi: "html",
-                    bold: { size: 15, color: "#007aff" }
+                    bold: { size: 16, color: STYLE.blue, face: "DM Sans", mod: "bold" },
+                    ital: { size: 11, color: STYLE.textSecondary, face: "DM Sans", mod: "" }
                 }
             },
 
@@ -107,8 +133,8 @@ function renderTree(result) {
                 hierarchical: {
                     direction: "UD",
                     sortMethod: "directed",
-                    levelSeparation: 180,
-                    nodeSpacing: 200
+                    levelSeparation: 150,
+                    nodeSpacing: 170
                 }
             },
 
@@ -134,8 +160,8 @@ function renderTree(result) {
 
                 return {
                     id: edgeId,
-                    color: onRoute ? "#007aff" : "#4d91cf",
-                    width: 2.5
+                    color: onRoute ? STYLE.blue : "#4d91cf",
+                    width: 3
                 };
             })
         );
