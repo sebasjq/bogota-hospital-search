@@ -1,16 +1,41 @@
 # Bogotá Hospital Search
 
-Interfaz local para seleccionar hospitales de Bogotá y preparar la integración de algoritmos de búsqueda de Inteligencia Artificial. Esta primera fase no calcula rutas: muestra una base cartográfica esquemática sin recursos externos, carga `data/hospitals.json` y deja definidos los puntos de extensión.
+Aplicación local para seleccionar hospitales de Bogotá, ejecutar algoritmos de búsqueda y visualizar rutas sobre un mapa esquemático. El frontend está servido por una API Python local que reutiliza los algoritmos existentes sin modificarlos.
 
 ## Estado actual
 
-- `interface/js/map.js`: visor SVG offline, zoom, desplazamiento y marcadores.
-- `interface/js/app.js`: carga hospitales, sincroniza selectores y selección sobre el mapa.
+- `backend/server.py`: servidor local, archivos estáticos y endpoint `POST /api/search`.
+- `interface/js/map.js`: visor SVG offline, zoom, desplazamiento, marcadores y ruta calculada.
+- `interface/js/app.js`: carga hospitales, sincroniza selectores, ejecuta búsquedas y presenta resultados.
 - `data/hospitals.json`: fuente de verdad de hospitales en WGS84 (`latitude`, `longitude`).
-- `data/connections.json`: reservado para la red/grafo futuro.
-- `logic/search.py`: reservado para BFS, Dijkstra, A* u otro algoritmo.
+- `data/connections.json`: aristas de la red con distancia de ida y vuelta.
+- `logic/`: algoritmos de búsqueda existentes. Es una carpeta protegida y no forma parte de la integración modificada.
 
 La base actual es deliberadamente esquemática. No debe confundirse con datos OSM: sirve para validar UX y coordenadas sin conexión. La interfaz también incluye una vista 3D opcional con MapLibre y MapTiler; el modo local sigue funcionando si no hay token.
+
+## Integración de rutas
+
+El flujo es `selector -> POST /api/search -> algoritmo Python -> geometría OSRM -> resultado JSON -> mapa y árbol`. El frontend envía `origin`, `destination` y `algorithm`. El backend selecciona exactamente una función de `logic/`, conserva su tupla de retorno y serializa `path`, `distance`, `tree_edges`, `expanded` y `route_geometry`. El mapa dibuja la geometría vial combinada de los tramos dirigidos de `path`.
+
+Los algoritmos disponibles son `bfs`, `uniform_cost`, `greedy` y `a_star`. `connections.json` se carga mediante `logic.graph.load_graph()`: cada registro contiene `source`, `target`, `distance_forward_km` y `distance_backward_km`, y se convierte en dos aristas dirigidas con sus respectivos costos.
+
+## Ejecutar la aplicación completa
+
+Desde la raíz:
+
+```powershell
+python backend/server.py
+```
+
+Abrir `http://127.0.0.1:8000/interface/`. El botón **Calcular ruta** requiere origen, destino y algoritmo. Después del cálculo, el panel muestra algoritmo, distancia y recorrido; **Ver árbol de búsqueda** reutiliza los datos de expansión generados por el algoritmo.
+
+Para comprobar el contrato sin navegador:
+
+```powershell
+@'{"origin":"H30","destination":"H29","algorithm":"a_star"}'@ | curl.exe -X POST http://127.0.0.1:8000/api/search -H "Content-Type: application/json" --data-binary @-
+```
+
+La carpeta `backend/` contiene la documentación específica del endpoint. Las carpetas `logic/` y `scripts/` se mantienen intactas; cualquier algoritmo nuevo debe integrarse desde el adaptador, sin cambiar sus contratos existentes.
 
 ## Activar la vista 3D remota
 
@@ -53,23 +78,26 @@ data/
 	graph/                  # red vial normalizada para IA
 	interface/
 		index.html
-		pages/tree.html
 		css/styles.css theme.css
 		js/app.js map.js config.js tree.js tree_data.js
+	backend/
+		server.py
 logic/
-	search.py               # algoritmos, fase posterior
+	bfs.py a_star.py greedy.py uniform_cost.py graph.py
+scripts/
+		fill_distances.py search_tree_graph.py
 tools/                    # scripts de descarga/conversión
 ```
 
 ## Ejecutar la interfaz
 
-Desde la raíz del proyecto, iniciar un servidor estático porque el navegador restringe `fetch` de JSON con `file://`:
+Desde la raíz del proyecto, iniciar la capa de integración porque el navegador no puede invocar Python al abrir el HTML con `file://`:
 
 ```powershell
-python -m http.server 8000
+python backend/server.py
 ```
 
-Abrir `http://localhost:8000/interface/`. En el `.exe` final, Tauri servirá los mismos recursos incluidos y no habrá dependencia de Internet.
+Abrir `http://127.0.0.1:8000/interface/`. En el `.exe` final, Tauri podrá servir los mismos recursos incluidos y arrancar el backend como proceso local.
 
 ## Desarrollo frente al ejecutable
 

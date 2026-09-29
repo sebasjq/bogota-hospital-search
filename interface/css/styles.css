@@ -13,6 +13,13 @@
 	--route-body-size: 14px;
 	--route-label-size: 15px;
 	--control-icon-size: 24px;
+	--map-controls-width: 232px;
+
+	/* Scrim compartido: estado de carga y pop-up del árbol */
+	--scrim-color: rgba(24, 40, 46, 0.2);
+	--scrim-blur: 8px;
+	--scrim-in: 360ms;
+	--scrim-out: 320ms;
 }
 
 html,
@@ -75,47 +82,59 @@ body {
    AVISO DE SELECCIÓN
 ========================= */
 
-.hospital-notice {
+/*
+ * Pila de avisos. Cada aviso es un <glass-element> (igual que los controles del mapa).
+ * Para no romper el Liquid Glass NO se animan opacity, filter, clip-path ni mask
+ * (convierten al elemento en "backdrop root" y el vidrio deja de ver el mapa).
+ * Todo el movimiento es transform: entra desde arriba, los anteriores se
+ * repliegan detrás (--i = posición en la pila) y al caducar salen hacia arriba.
+ */
+.notice-stack {
 	position: fixed;
 	top: 16px;
 	left: 50%;
 	z-index: 20;
+	width: 0;
+	height: 0;
+	pointer-events: none;
+}
 
-	display: inline-flex;
-	align-items: center;
-	justify-content: flex-start;
-	gap: 8px;
+.notice-item {
+	--i: 0;
+	position: absolute;
+	top: 0;
+	left: 0;
 	width: max-content;
 	max-width: calc(100vw - 32px);
-	min-height: 48px;
-	padding: 8px 14px 8px 8px;
+	pointer-events: none;
+	transform-origin: top center;
 
-	border: 1px solid rgba(255, 255, 255, 0.62);
-	border-radius: 999px;
-	background: rgba(255, 255, 255, 0.58);
+	/* estado inicial: fuera de pantalla, arriba */
+	transform: translate(-50%, calc(-100% - 32px)) scale(0.94);
+	transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notice-item.is-visible {
+	transform: translate(-50%, calc(var(--i) * 12px)) scale(calc(1 - var(--i) * 0.06));
+}
+
+.notice-item.is-leaving {
+	transform: translate(-50%, calc(-100% - 32px)) scale(0.94);
+	transition-duration: 320ms;
+	transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
+
+.hospital-notice-content {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 32px;
+	max-width: calc(100vw - 32px - 22px);
 	color: var(--apple-secondary-label);
-	box-shadow: 0 8px 24px rgba(35, 57, 62, 0.16);
-	backdrop-filter: blur(18px);
-	-webkit-backdrop-filter: blur(18px);
-
 	font-size: 14px;
 	font-weight: 400;
 	line-height: 1.2;
-	text-align: center;
 	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
-	opacity: 0;
-	pointer-events: none;
-	transform: translate(-50%, calc(-100% - 32px));
-	transition:
-		opacity 240ms ease,
-		transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.hospital-notice.is-visible {
-	opacity: 1;
-	transform: translate(-50%, 0);
 }
 
 .hospital-notice-icon {
@@ -138,9 +157,24 @@ body {
 		"opsz" 24;
 }
 
+.hospital-notice-icon.is-error {
+	color: #d62839;
+}
+
+.hospital-notice-icon.is-model {
+	color: #007aff;
+}
+
+.hospital-notice-icon.is-loading {
+	color: #007aff;
+}
+
 .hospital-notice-text {
 	flex: 1 1 auto;
 	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	color: var(--apple-secondary-label);
 	font-size: var(--route-body-size);
 	font-weight: 400;
@@ -202,7 +236,7 @@ body {
 	margin: 0 0 4px;
 	color: var(--apple-label);
 	font-size: var(--route-heading-size);
-	font-weight: 500;
+	font-weight: 600;
 	letter-spacing: -0.01em;
 }
 
@@ -423,12 +457,12 @@ body {
 	border: 0 solid rgba(255, 255, 255, 0.62);
 	border-radius: 16px;
 
-	background: rgba(246, 250, 251, 0.94);
+	background: rgb(255, 255, 255, 0.9);
 
 	box-shadow: none;
 
-	backdrop-filter: blur(24px) saturate(145%);
-	-webkit-backdrop-filter: blur(24px) saturate(145%);
+	backdrop-filter: blur(var(--blur-control)) saturate(145%);
+	-webkit-backdrop-filter: blur(var(--blur-control)) saturate(145%);
 
 	opacity: 0;
 	visibility: hidden;
@@ -543,15 +577,19 @@ body {
    BOTÓN CALCULAR RUTA
 ========================= */
 
-.route-button {
+.route-button,
+.route-secondary-button {
 	width: fit-content;
-	height: 50px;
+	height: 40px;
+	min-width: 0;
+	max-width: 100%;
 
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	gap: 8px;
 
-	padding: 0 22px;
+	padding: 0 14px;
 	margin-inline: auto;
 	margin-top: 16px;
 
@@ -564,6 +602,9 @@ body {
 	font-family: inherit;
 	font-size: 16px;
 	font-weight: 500;
+	line-height: 1;
+	white-space: nowrap;
+	text-align: center;
 
 	cursor: pointer;
 
@@ -581,6 +622,314 @@ body {
 	cursor: not-allowed;
 }
 
+.route-button.is-loading {
+	animation: route-button-pulse 1s ease-in-out infinite;
+}
+
+.route-status {
+	min-height: 18px;
+	margin: 12px 4px 0;
+	color: var(--apple-secondary-label);
+	font-size: 12px;
+	line-height: 1.35;
+}
+
+.route-status.is-success { color: #198754; }
+.route-status.is-error { color: #c62839; }
+
+/*
+ * Caja "Ruta encontrada": mismo criterio que el aviso.
+ * Solo transform + visibility; nada de opacity ni animar `right`,
+ * así el Liquid Glass permanece intacto durante toda la animación.
+ * Estados: visible con .is-visible (o sin .is-hidden); oculto con .is-hidden.
+ */
+.route-result-card {
+	--route-result-right: 20px;
+	position: fixed !important;
+	top: 88px;
+	right: var(--route-result-right);
+	width: var(--map-controls-width);
+	z-index: 10;
+
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateX(calc(100% + var(--route-result-right) + 24px)) scale(0.96);
+	transform-origin: right top;
+	transition:
+		transform 360ms cubic-bezier(0.4, 0, 1, 1),
+		visibility 0s linear 360ms;
+}
+
+/* La caja de resultados conserva exactamente el ancho de los paneles de ruta. */
+.route-result-card .route-section-heading {
+	margin-bottom: 16px;
+}
+
+.route-result-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+}
+
+.route-result-grid > div {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	text-align: center;
+}
+
+/* Misma jerarquía que Origen, Destino y Modelo. */
+.route-result-label {
+	display: block;
+	width: 100%;
+	margin: 0;
+	color: var(--apple-secondary-label);
+	font-size: var(--route-label-size);
+	font-weight: 400;
+	letter-spacing: 0.01em;
+	text-align: center;
+}
+
+/* Valor seleccionado: equivalente visual al texto elegido en los selectores. */
+.route-result-grid strong {
+	display: block;
+	min-width: 0;
+	color: var(--apple-blue);
+	font-size: var(--route-body-size);
+	font-weight: 400;
+	line-height: 1.35;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.result-algorithm-icon {
+	display: inline-flex !important;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	color: var(--apple-blue);
+	font-size: 27px !important;
+	font-variation-settings: "FILL" 0, "wght" 350, "GRAD" 0, "opsz" 24;
+}
+
+.route-secondary-button .tree-action-icon {
+	font-size: 22px !important;
+	font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
+}
+
+.route-button:hover:not(:disabled),
+.route-secondary-button:hover {
+	background: #006ee6;
+}
+
+.route-result-card.is-visible,
+.route-result-card:not(.is-hidden) {
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateX(0) scale(1);
+	transition:
+		transform 520ms cubic-bezier(0.16, 1, 0.3, 1),
+		visibility 0s;
+}
+
+.calculated-route {
+	fill: none;
+	stroke: #007aff;
+	stroke-width: 8;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	animation: route-draw 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.calculated-route-halo {
+	fill: none;
+	stroke: rgba(0, 122, 255, 0.24);
+	stroke-width: 18;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	animation: route-draw 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/*
+ * Pop-up del árbol: un solo contenedor visual hecho de dos secciones sin espacio entre ellas.
+ *  - Arriba: blanco sólido, solo esquinas superiores redondeadas, línea inferior de separación.
+ *  - Abajo: Liquid Glass translúcido, solo esquinas inferiores redondeadas.
+ *
+ * Animación (controlada por la clase .is-visible desde app.js):
+ *  - El <dialog> permanece [open] durante la salida; solo se llama a close() al terminar. Así el
+ *    layout (flex en columna) nunca cambia a mitad de la animación y el contenedor sale entero.
+ *  - El <dialog> NO lleva opacity/filter/clip-path/backdrop-filter (romperían el vidrio de la
+ *    sección inferior): entrada y salida usan solo transform.
+ *  - El fondo (::backdrop) reutiliza exactamente el scrim del estado de carga
+ *    (--scrim-color / --scrim-blur y los mismos tiempos).
+ */
+.tree-dialog {
+	--tree-radius: 30px;
+	--tree-close-size: 36px;
+
+	width: min(760px, calc(100vw - 32px));
+	height: min(480px, 62vh);
+	max-width: none;
+	max-height: none;
+	padding: 0;
+	overflow: visible;
+	border: 0;
+	border-radius: var(--tree-radius);
+	background: transparent;
+	flex-direction: column; /* fijo: no depende de [open] */
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.6),
+		0 12px 40px rgba(35, 57, 62, 0.28);
+
+	/* Estado oculto: abajo, fuera de pantalla */
+	transform-origin: center bottom;
+	transform: translateY(calc(50vh + 100%)) scale(0.96);
+	will-change: transform;
+	transition: transform 380ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.tree-dialog[open] {
+	display: flex;
+}
+
+.tree-dialog.is-visible {
+	transform: none;
+	transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Fondo: mismo blur + oscurecimiento que .loading-overlay */
+.tree-dialog::backdrop {
+	background: rgba(24, 40, 46, 0);
+	-webkit-backdrop-filter: blur(0px);
+	backdrop-filter: blur(0px);
+	transition:
+		background-color var(--scrim-out) ease,
+		backdrop-filter var(--scrim-out) ease,
+		-webkit-backdrop-filter var(--scrim-out) ease;
+}
+
+.tree-dialog.is-visible::backdrop {
+	background: var(--scrim-color);
+	-webkit-backdrop-filter: blur(var(--scrim-blur));
+	backdrop-filter: blur(var(--scrim-blur));
+	transition:
+		background-color var(--scrim-in) ease,
+		backdrop-filter var(--scrim-in) ease,
+		-webkit-backdrop-filter var(--scrim-in) ease;
+}
+
+/* ---------- Sección superior ---------- */
+
+.tree-dialog-header {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: space-between;
+	height: calc(var(--tree-radius) * 2);
+	padding: 0 calc(var(--tree-radius) - var(--tree-close-size) / 2) 0 var(--tree-radius);
+	background: #fff;
+	border-bottom: 1px solid rgba(104, 126, 145, 0.24);
+	border-radius: var(--tree-radius) var(--tree-radius) 0 0;
+}
+
+.tree-dialog-header h2 {
+	margin: 0;
+	color: var(--apple-blue);
+	font-family: "DM Sans", var(--font-ui);
+	font-size: 28px;
+	font-weight: 300;
+	letter-spacing: 0;
+	line-height: 1.1;
+}
+
+/* Botón sencillo: círculo con borde azul, como los desplegables (borde 1px, fondo transparente) */
+.tree-dialog-close {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: var(--tree-close-size);
+	height: var(--tree-close-size);
+	padding: 0;
+	border: 1px solid rgba(0, 122, 255, 0.55);
+	border-radius: 50%;
+	background: transparent;
+	color: var(--apple-blue);
+	cursor: pointer;
+	transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.tree-dialog-close .material-symbols-rounded {
+	font-size: 20px !important;
+}
+
+.tree-dialog-close:hover {
+	background: rgba(0, 122, 255, 0.08);
+	border-color: rgba(0, 122, 255, 0.8);
+}
+
+.tree-dialog-close:active {
+	background: rgba(0, 122, 255, 0.14);
+}
+
+/* ---------- Sección inferior: Liquid Glass más transparente ---------- */
+
+.tree-dialog-body {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+	border: 1px solid rgba(255, 255, 255, 0.5);
+	border-top: 0;
+	border-radius: 0 0 var(--tree-radius) var(--tree-radius);
+	background:
+		radial-gradient(circle at 14% 8%, rgba(255, 255, 255, 0.28), transparent 42%),
+		linear-gradient(150deg, rgba(255, 255, 255, 0.16), rgba(214, 229, 237, 0.08));
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.5),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+		inset 0 -14px 28px rgba(255, 255, 255, 0.08);
+	-webkit-backdrop-filter: blur(12px) saturate(160%);
+	backdrop-filter: blur(10px) saturate(160%);
+}
+
+.tree-view {
+	width: 100%;
+	height: 100%;
+	background: transparent;
+}
+
+/* La píldora es la misma del mapa (.navigation-control); aquí solo se posiciona. */
+.tree-dialog-controls {
+	position: absolute;
+	right: 18px;
+	bottom: 18px;
+	z-index: 2;
+}
+
+@media (max-width: 520px) {
+	.tree-dialog { --tree-radius: 26px; height: min(480px, 70vh); }
+	.tree-dialog-header h2 { font-size: 24px; }
+	.tree-dialog-controls { right: 12px; bottom: 12px; }
+}
+
+@keyframes route-button-pulse {
+	50% { opacity: 0.62; }
+}
+
+@keyframes route-draw {
+	to { stroke-dashoffset: 0; }
+}
+
 
 /* =========================
    CONTROLES DEL MAPA
@@ -590,11 +939,35 @@ body {
 	position: absolute;
 	top: 20px;
 	right: 20px;
+	width: var(--map-controls-width);
+	height: 56px;
 
 	display: flex;
+	align-items: flex-start;
 	gap: 8px;
 
 	z-index: 10;
+}
+
+.mode-control,
+.navigation-control {
+	flex: 0 0 auto;
+	height: 56px !important;
+	min-height: 56px !important;
+	max-height: 56px !important;
+	align-self: flex-start;
+}
+
+.mode-control {
+	width: 56px;
+}
+
+.navigation-control {
+	width: 168px;
+}
+
+.navigation-control .map-button-group {
+	height: 56px;
 }
 
 .map-button-group {
@@ -737,6 +1110,14 @@ button:focus-visible {
 	fill: #d9e2e5;
 }
 
+.hospital-connection {
+	fill: none;
+	stroke: rgba(58, 97, 108, 0.72);
+	stroke-width: 3;
+	stroke-linecap: round;
+	stroke-dasharray: 8 8;
+}
+
 .avenue {
 	fill: none;
 	stroke: rgba(82, 108, 114, 0.3);
@@ -770,9 +1151,13 @@ button:focus-visible {
 	outline: none;
 }
 
+/* Sombra como forma simple: los filtros SVG sobre un mapa que se mueve son caros. */
+.marker-shadow {
+	fill: rgba(0, 0, 0, 0.22);
+}
+
 .marker-backdrop {
 	fill: #fff;
-	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
 }
 
 .marker-hospital {
@@ -799,16 +1184,13 @@ button:focus-visible {
 	animation: hospital-marker-float 1.8s ease-in-out infinite;
 }
 
-.hospital-marker.is-origin .marker-backdrop {
-	filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.42));
+.hospital-marker.is-origin .marker-shadow,
+.hospital-marker.is-destination .marker-shadow {
+	fill: rgba(0, 0, 0, 0.32);
 }
 
 .hospital-marker.is-origin .marker-hospital {
 	fill: #007aff;
-}
-
-.hospital-marker.is-destination .marker-backdrop {
-	filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.42));
 }
 
 .hospital-marker.is-destination .marker-hospital {
@@ -844,7 +1226,7 @@ button:focus-visible {
 	height: 28px;
 	background: #fff;
 	border-radius: 8px;
-	filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.42));
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.42);
 }
 
 .remote-marker-hospital {
@@ -901,8 +1283,22 @@ button:focus-visible {
 	}
 }
 
-.remote-hospital-marker:hover {
-	filter: drop-shadow(0 4px 9px rgba(0, 0, 0, 0.32));
+/* box-shadow en el contenido (no filter en el marcador, que MapLibre mueve en cada frame) */
+.remote-hospital-marker:not(.is-origin):not(.is-destination):hover .remote-marker-content {
+	box-shadow: 0 4px 9px rgba(0, 0, 0, 0.32);
+}
+
+/* Marcadores animados: capa propia y pausa mientras el mapa se mueve */
+.remote-hospital-marker.is-origin .remote-marker-content,
+.remote-hospital-marker.is-destination .remote-marker-content,
+.hospital-marker.is-origin .marker-content,
+.hospital-marker.is-destination .marker-content {
+	will-change: transform;
+}
+
+.is-map-moving .remote-marker-content,
+.is-map-moving .marker-content {
+	animation-play-state: paused !important;
 }
 
 
@@ -930,6 +1326,86 @@ button:focus-visible {
 
 
 /* =========================
+   INDICADOR DE CARGA
+========================= */
+
+/*
+ * Pantalla completa: difumina y oscurece ligeramente el fondo y centra una tarjeta blanca.
+ * Se anima con transiciones de backdrop-filter / background / transform (sin depender de
+ * opacity en el contenedor difuminado).
+ */
+.loading-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 40;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	visibility: hidden;
+	pointer-events: none;
+	background: rgba(24, 40, 46, 0);
+	-webkit-backdrop-filter: blur(0px);
+	backdrop-filter: blur(0px);
+	transition:
+		background-color 320ms ease,
+		backdrop-filter 320ms ease,
+		-webkit-backdrop-filter 320ms ease,
+		visibility 0s linear 320ms;
+}
+
+.loading-overlay.is-visible {
+	visibility: visible;
+	pointer-events: auto;
+	background: var(--scrim-color);
+	-webkit-backdrop-filter: blur(var(--scrim-blur));
+	backdrop-filter: blur(var(--scrim-blur));
+	transition:
+		background-color 360ms ease,
+		backdrop-filter 360ms ease,
+		-webkit-backdrop-filter 360ms ease,
+		visibility 0s;
+}
+
+.loading-card {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 92px;
+	height: 92px;
+	border-radius: 26px;
+	background: #fff;
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.6),
+		0 12px 40px rgba(35, 57, 62, 0.28);
+	opacity: 0;
+	transform: scale(0.82) translateY(8px);
+	transition:
+		opacity 220ms ease,
+		transform 260ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.loading-overlay.is-visible .loading-card {
+	opacity: 1;
+	transform: none;
+	transition:
+		opacity 260ms ease,
+		transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.loading-icon {
+	display: block !important;
+	color: var(--apple-blue);
+	font-size: 46px !important;
+	font-variation-settings: "FILL" 0, "wght" 350, "GRAD" 0, "opsz" 48;
+	animation: loading-spin 900ms linear infinite;
+}
+
+@keyframes loading-spin {
+	to { transform: rotate(360deg); }
+}
+
+
+/* =========================
    REDUCIR MOVIMIENTO
 ========================= */
 
@@ -942,6 +1418,10 @@ button:focus-visible {
 		animation-duration: 0.01ms !important;
 	}
 
+	.loading-icon {
+		animation-duration: 1.6s !important;
+	}
+
 }
 
 
@@ -951,6 +1431,10 @@ button:focus-visible {
 
 @media (max-width: 520px) {
 
+	:root {
+		--map-controls-width: 208px;
+	}
+
 	.route-panel {
 		top: 12px;
 		left: 12px;
@@ -958,13 +1442,41 @@ button:focus-visible {
 		width: auto;
 	}
 
+	.route-result-card {
+		--route-result-right: 12px;
+		top: 70px;
+		right: 12px;
+		width: var(--map-controls-width);
+	}
+
 	.route-form {
 		padding: 16px;
 	}
 
 	.map-toolbar {
-		top: 12px;
+		top: auto;
+		bottom: 12px;
 		right: 12px;
+		height: 50px;
+	}
+
+	.mode-control,
+	.navigation-control {
+		height: 50px !important;
+		min-height: 50px !important;
+		max-height: 50px !important;
+	}
+
+	.mode-control {
+		width: 50px;
+	}
+
+	.navigation-control {
+		width: 150px;
+	}
+
+	.navigation-control .map-button-group {
+		height: 50px;
 	}
 
 	.map-button {
@@ -1136,7 +1648,7 @@ button:focus-visible {
 	border: 0 solid rgba(255, 255, 255, 0.62);
 	border-radius: 14px;
 
-	background: rgba(246, 250, 251, 0.96);
+	background: rgb(255, 255, 255, 0.9);
 
 	box-shadow: none;
 
@@ -1232,4 +1744,19 @@ button:focus-visible {
 
 .model-option-copy strong {
 	font: inherit;
+}
+
+
+/* =========================
+   RESULTADO EN MÓVIL
+========================= */
+
+@media (max-width: 520px) {
+	.route-result-card {
+		top: 70px;
+		left: auto;
+		right: 12px;
+		bottom: auto;
+		width: var(--map-controls-width);
+	}
 }

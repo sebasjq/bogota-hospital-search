@@ -1,13 +1,41 @@
 /**
  * Utilidades para crear mapas de desplazamiento y filtros
  * Convertido desde TypeScript a JavaScript vanilla
+ *
+ * Optimización de rendimiento (el resultado visual del modo completo es idéntico):
+ *  - Los mapas y filtros se memorizan por parámetros (LRU): un mismo tamaño/profundidad no vuelve
+ *    a generar, codificar ni resolver un data-URI nuevo.
+ *  - Con aberración cromática 0 se usa un solo feDisplacementMap (antes se calculaban 3 idénticos).
+ *  - Opción `lite`: una sola pasada de desplazamiento (sin separación RGB). GlassElement la usa
+ *    solo mientras el mapa se mueve, que es cuando el fondo cambia en cada frame.
  */
+
+const CACHE_LIMIT = 48;
+const mapCache = new Map();
+const filterCache = new Map();
+
+function memoize(cache, key, build) {
+    let value = cache.get(key);
+    if (value !== undefined) {
+        cache.delete(key); // refresca el orden (LRU)
+        cache.set(key, value);
+        return value;
+    }
+    value = build();
+    cache.set(key, value);
+    if (cache.size > CACHE_LIMIT) cache.delete(cache.keys().next().value);
+    return value;
+}
 
 /**
  * Crear el mapa de desplazamiento que usa el filtro feDisplacementMap.
  * Los gradientes toman en cuenta el radio del elemento.
  */
 function getDisplacementMap({ height, width, radius, depth }) {
+    return memoize(mapCache, `${height}|${width}|${radius}|${depth}`, () => buildDisplacementMap({ height, width, radius, depth }));
+}
+
+function buildDisplacementMap({ height, width, radius, depth }) {
     const svg = `<svg height="${height}" width="${width}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
         <style>
             .mix { mix-blend-mode: screen; }
@@ -80,9 +108,36 @@ function getDisplacementFilter({
     radius, 
     depth, 
     strength = 100, 
-    chromaticAberration = 0 
+    chromaticAberration = 0,
+    lite = false
 }) {
+    const key = `${height}|${width}|${radius}|${depth}|${strength}|${chromaticAberration}|${lite ? 1 : 0}`;
+    return memoize(filterCache, key, () => buildDisplacementFilter({ height, width, radius, depth, strength, chromaticAberration, lite }));
+}
+
+function buildDisplacementFilter({ height, width, radius, depth, strength, chromaticAberration, lite }) {
     const displacementMapUrl = getDisplacementMap({ height, width, radius, depth });
+
+    // Una sola pasada: sin aberración cromática (o modo lite, con la escala intermedia del efecto completo)
+    if (lite || !chromaticAberration) {
+        const scale = lite ? strength + chromaticAberration : strength;
+        const svg = `<svg height="${height}" width="${width}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <filter id="displace" color-interpolation-filters="sRGB">
+                <feImage x="0" y="0" height="${height}" width="${width}" href="${displacementMapUrl}" result="displacementMap" />
+                <feDisplacementMap
+                    transform-origin="center"
+                    in="SourceGraphic"
+                    in2="displacementMap"
+                    scale="${scale}"
+                    xChannelSelector="R"
+                    yChannelSelector="G"
+                />
+            </filter>
+        </defs>
+    </svg>`;
+        return "data:image/svg+xml;utf8," + encodeURIComponent(svg) + "#displace";
+    }
     
     const svg = `<svg height="${height}" width="${width}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
         <defs>

@@ -1,4 +1,7 @@
+let treeNetwork;
+
 function renderTree(result) {
+    if (treeNetwork) treeNetwork.destroy();
     const id = path => JSON.stringify(path);
 
     const expansionOrder = new Map(
@@ -12,18 +15,45 @@ function renderTree(result) {
             id(result.path.slice(0, index + 1)))
     );
 
+    // Paleta del árbol (lenguaje Apple / Liquid Glass)
+    const STYLE = {
+        text: "rgba(27, 43, 58, 0.82)",
+        textSecondary: "rgba(60, 72, 88, 0.55)",
+        blue: "#007aff",
+        node: {
+            background: "rgba(255, 255, 255, 0.82)",
+            border: "rgba(120, 144, 166, 0.55)",
+            hoverBackground: "rgba(255, 255, 255, 0.96)",
+            hoverBorder: "#4d91cf",
+            shadow: "rgba(35, 57, 62, 0.12)"
+        },
+        route: {
+            background: "rgba(226, 240, 255, 0.92)",
+            border: "#007aff",
+            hoverBackground: "#d3e8ff",
+            hoverBorder: "#006ee6",
+            shadow: "rgba(0, 122, 255, 0.22)"
+        },
+        edge: "rgba(84, 110, 133, 0.38)",
+        edgeRoute: "rgba(0, 122, 255, 0.85)"
+    };
+
     function makeNode(path, g, h = null, f = null) {
 
         const onRoute = routeNodes.has(id(path));
         const order = expansionOrder.get(id(path));
-        
+        const palette = onRoute ? STYLE.route : STYLE.node;
+
+        // Tarjeta compacta: nombre, orden de expansión y métricas en pocas líneas.
+        const metrics = [`g=${g.toFixed(3)}`];
+        if (h != null) metrics.push(`h=${h.toFixed(3)}`);
+
         const labelLines = [
             `<b>${path.at(-1)}</b>`,
-            ...(order !== undefined ? [`Expansión ${order}`] : []),
-            `g=${g.toFixed(3)}`
+            ...(order !== undefined ? [`<i>Expansión ${order}</i>`] : []),
+            metrics.join("  ·  ")
         ];
-        
-        if (h != null) labelLines.push(`h=${h.toFixed(3)}`);
+
         if (f != null) labelLines.push(`f=${f.toFixed(3)}`);
 
         return {
@@ -33,19 +63,21 @@ function renderTree(result) {
             title: path.join(" → "),
             level: path.length - 1,
 
-            color: onRoute
-                ? {
-                    background: "#d8f3df",
-                    border: "#198754",
-                    highlight: { background: "#d8f3df", border: "#198754" }
-                }
-                : {
-                    background: "#e7f0ff",
-                    border: "#528ac7",
-                    highlight: { background: "#e7f0ff", border: "#528ac7" }
-                },
-            borderWidth: onRoute ? 3 : 1,
-            borderWidthSelected: 3
+            color: {
+                background: palette.background,
+                border: palette.border,
+                highlight: { background: palette.hoverBackground, border: palette.hoverBorder },
+                hover: { background: palette.hoverBackground, border: palette.hoverBorder }
+            },
+            borderWidth: onRoute ? 2 : 1,
+            borderWidthSelected: 2.5,
+            shadow: {
+                enabled: true,
+                color: palette.shadow,
+                size: onRoute ? 16 : 12,
+                x: 0,
+                y: 4
+            }
         };
     }
 
@@ -66,8 +98,9 @@ function renderTree(result) {
             id: `edge-${edges.length}`,
             from: id(edge.parent),
             to: id(edge.child),
-            color: onRoute ? "#198754" : "#9ca3af",
-            width: onRoute ? 3 : 1
+            color: onRoute ? STYLE.edgeRoute : STYLE.edge,
+            width: onRoute ? 2.5 : 1.5,
+            smooth: { type: "cubicBezier", forceDirection: "vertical", roundness: 0.5 }
         });
     }   
 
@@ -76,17 +109,23 @@ function renderTree(result) {
         id, color, width
     }));
 
-    const network = new vis.Network(
+    treeNetwork = new vis.Network(
         document.getElementById("tree"),
         { nodes: [...nodes.values()], edges: edgeData },
         {
             nodes: {
-                shape: "circle",
-                margin: 14,
+                shape: "box",
+                shapeProperties: { borderRadius: 18 },
+                margin: { top: 12, right: 14, bottom: 12, left: 14 },
+                widthConstraint: { minimum: 132, maximum: 132 },
+                heightConstraint: { minimum: 84, valign: "middle" },
                 font: {
-                    size: 14,
+                    size: 12,
+                    face: "DM Sans",
+                    color: STYLE.text,
                     multi: "html",
-                    bold: { size: 22 }
+                    bold: { size: 16, color: STYLE.blue, face: "DM Sans", mod: "bold" },
+                    ital: { size: 11, color: STYLE.textSecondary, face: "DM Sans", mod: "" }
                 }
             },
 
@@ -94,17 +133,19 @@ function renderTree(result) {
                 hierarchical: {
                     direction: "UD",
                     sortMethod: "directed",
-                    levelSeparation: 180,
-                    nodeSpacing: 200
+                    levelSeparation: 150,
+                    nodeSpacing: 170
                 }
             },
 
-            interaction: { selectConnectedEdges: false },
+            interaction: { selectConnectedEdges: false, hover: true, zoomView: true },
             physics: false
         }
     );
 
-    network.on("click", ({ nodes: selected }) => {
+    window.treeNetwork = treeNetwork;
+
+    treeNetwork.on("click", ({ nodes: selected }) => {
         edgeData.update(originalStyles);
 
         if (selected.length === 0) return;
@@ -112,20 +153,31 @@ function renderTree(result) {
         const nodeId = selected[0];
 
         edgeData.update(
-            network.getConnectedEdges(nodeId).map(edgeId => {
+                    treeNetwork.getConnectedEdges(nodeId).map(edgeId => {
                 const edge = edgeData.get(edgeId);
                 const onRoute =
                     routeNodes.has(edge.from) && routeNodes.has(edge.to);
 
                 return {
                     id: edgeId,
-                    color: onRoute ? "#198754" : "#528ac7",
-                    width: 4
+                    color: onRoute ? STYLE.blue : "#4d91cf",
+                    width: 3
                 };
             })
         );
     });
 }
+
+window.zoomTree = factor => {
+    if (!treeNetwork) return;
+    const scale = Math.min(2.5, Math.max(0.25, treeNetwork.getScale() * factor));
+    treeNetwork.moveTo({ scale, animation: { duration: 240, easingFunction: "easeInOutQuad" } });
+};
+
+window.fitTree = () => {
+    if (!treeNetwork) return;
+    treeNetwork.fit({ animation: { duration: 320, easingFunction: "easeInOutQuad" } });
+};
 
 // Permite pasarle un resultado después, desde la app.
 window.renderTree = renderTree;
