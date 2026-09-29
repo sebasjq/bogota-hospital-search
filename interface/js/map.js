@@ -12,6 +12,21 @@ const mapView = (() => {
 	}
 	let svg; let viewport; let remoteMap; let remoteMarkers = new Map(); let localMarkers = new Map(); let hospitalPositions = new Map(); let remoteMode = "2d"; let scale = 1; let rotation = 0; let offsetX = 0; let offsetY = 0; let dragStart; let pendingTransform; let transformFrame;
 	let connectionLayer; let routeLayer; let routeAnimationFrame;
+	/* Estado del mapa remoto (MapLibre) */
+	let remoteReady = false;          // true tras el evento "load" (isStyleLoaded() es false cada vez que se cargan teselas)
+	let pendingRoute = null;          // ruta pedida antes de que el estilo estuviera listo
+	let buildingsTimer;               // oculta los edificios al terminar la transición 3D → 2D
+	const BUILDINGS_LAYER = "bogota-buildings-3d";
+	const PIXEL_RATIO_CAP_2D = 2;
+	const PIXEL_RATIO_CAP_3D = 1.5;   // 3D dibuja mucha más geometría por frame: se limita la resolución interna
+	function pixelRatioFor(mode) { return Math.min(window.devicePixelRatio || 1, mode === "3d" ? PIXEL_RATIO_CAP_3D : PIXEL_RATIO_CAP_2D); }
+	/* Cambiar "visibility" recarga TODA la fuente vectorial (calles, etiquetas, etc.), así que solo se hace al
+	   cambiar de modo 2D/3D y nunca durante el movimiento del mapa. */
+	function setBuildingsVisible(visible) {
+		if (!remoteMap || !remoteMap.getLayer(BUILDINGS_LAYER)) return;
+		const value = visible ? "visible" : "none";
+		if (remoteMap.getLayoutProperty(BUILDINGS_LAYER, "visibility") !== value) remoteMap.setLayoutProperty(BUILDINGS_LAYER, "visibility", value);
+	}
 	function project(longitude, latitude) { return { x: ((longitude - bounds.west) / (bounds.east - bounds.west)) * 1000, y: ((bounds.north - latitude) / (bounds.north - bounds.south)) * 1400 }; }
 	function transform() { viewport.setAttribute("transform", `translate(${offsetX} ${offsetY}) rotate(${rotation} 500 700) scale(${scale})`); }
 	function scheduleTransform() { pendingTransform = true; if (transformFrame) return; transformFrame = requestAnimationFrame(() => { transformFrame = undefined; if (pendingTransform) { pendingTransform = false; transform(); } }); }
@@ -49,12 +64,14 @@ const mapView = (() => {
 	function zoomIn() { setZoom(remoteMap ? 2 : scale + 0.2); }
 	function zoomOut() { setZoom(remoteMap ? 0 : scale - 0.2); }
 	function rotate(degrees) { if (remoteMap) { remoteMap.rotateTo(remoteMap.getBearing() + degrees, { duration: 220 }); return; } rotation = (rotation + degrees) % 360; scheduleTransform(); }
-	function reset() { if (remoteMap) { remoteMap.flyTo({ center: [-74.08, 4.65], zoom: remoteMode === "3d" ? 14 : 11.3, pitch: remoteMode === "3d" ? 55 : 0, bearing: remoteMode === "3d" ? -20 : 0 }); return; } scale = 1; rotation = 0; offsetX = 0; offsetY = 0; transform(); }
+	function reset() { if (remoteMap) { remoteMap.flyTo({ center: [-74.08, 4.65], zoom: remoteMode === "3d" ? 14 : 11.3, pitch: remoteMode === "3d" ? 45 : 0, bearing: remoteMode === "3d" ? -20 : 0 }); return; } scale = 1; rotation = 0; offsetX = 0; offsetY = 0; transform(); }
 	function focusHospital(id) {
 		const position = hospitalPositions.get(id);
 		if (!position) return;
 		if (remoteMap) {
-			remoteMap.flyTo({ center: [position.longitude, position.latitude], essential: true, duration: 700 });
+			const target = { center: [position.longitude, position.latitude], essential: true, duration: 700 };
+			/* En 3D: desplazamiento a zoom constante (flyTo aleja y vuelve a acercar, y recarga muchas teselas de edificios) */
+			if (remoteMode === "3d") remoteMap.easeTo(target); else remoteMap.flyTo(target);
 			return;
 		}
 		const point = project(position.longitude, position.latitude);
@@ -69,7 +86,7 @@ const mapView = (() => {
 			: positions.map(position => [position.longitude, position.latitude]);
 		if (routeAnimationFrame) cancelAnimationFrame(routeAnimationFrame);
 		if (remoteMap) {
-			if (!remoteMap.isStyleLoaded()) return;
+			if (!remoteReady) { pendingRoute = { path, geometry }; return; }
 			const source = remoteMap.getSource("calculated-route");
 			if (coordinates.length < 2) {
 				if (source) source.setData({ type: "Feature", geometry: null });
@@ -132,7 +149,8 @@ const mapView = (() => {
 			renderWorldCopies: false,
 			antialias: false,
 			fadeDuration: 120,
-			pixelRatio: Math.min(window.devicePixelRatio || 1, 2)
+			pixelRatio: pixelRatioFor(remoteMode),
+			refreshExpiredTiles: false
 		});
 		remoteMap.on("styleimagemissing", event => {
 			if (remoteMap.hasImage(event.id)) return;
@@ -171,7 +189,7 @@ const mapView = (() => {
 			const buildingLayer = styleLayers.find(layer => layer.type === "fill" && layer['source-layer'] === "building");
 			if (buildingLayer) {
 				remoteMap.addLayer({
-					id: "bogota-buildings-3d",
+					id: BUILDINGS_LAYER,
 					type: "fill-extrusion",
 					source: buildingLayer.source,
 					"source-layer": "building",
@@ -179,10 +197,14 @@ const mapView = (() => {
 					filter: [">", ["coalesce", ["get", "render_height"], ["get", "height"], 0], 6],
 					layout: { visibility: "none" },
 					paint: {
-						"fill-extrusion-color": "#b8aaa0",
-						"fill-extrusion-height": ["coalesce", ["get", "render_height"], ["get", "height"], 8],
-						"fill-extrusion-base": ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0],
-						"fill-extrusion-opacity": 0.72,
+						/* Color opaco equivalente a #b8aaa0 al 72 % sobre el mapa: con opacidad < 1 MapLibre dibuja las
+						   extrusiones en una textura aparte en cada frame (muy costoso) y se ven las paredes traslúcidas. */
+						"fill-extrusion-color": "#cabfb6",
+						/* Los edificios crecen con el zoom (13.3 → 14): sin saltos al entrar en la capa. Es una propiedad de
+						   pintura: no recarga teselas. */
+						"fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13.3, 0, 14, ["coalesce", ["get", "render_height"], ["get", "height"], 8]],
+						"fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 13.3, 0, 14, ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0]],
+						"fill-extrusion-opacity": 1,
 						"fill-extrusion-vertical-gradient": false
 					}
 				});
@@ -196,13 +218,13 @@ const mapView = (() => {
 			});
 			remoteMap.on("movestart", () => {
 				documentRoot.classList.add("is-map-moving");
-				if (remoteMode === "3d" && remoteMap.getLayer("bogota-buildings-3d")) remoteMap.setLayoutProperty("bogota-buildings-3d", "visibility", "none");
 			});
 			remoteMap.on("moveend", () => {
 				documentRoot.classList.remove("is-map-moving");
-				if (remoteMode === "3d" && remoteMap.getLayer("bogota-buildings-3d")) remoteMap.setLayoutProperty("bogota-buildings-3d", "visibility", "visible");
 			});
-				setRemoteMode(remoteMode);
+			remoteReady = true;
+			setRemoteMode(remoteMode);
+			if (pendingRoute) { const route = pendingRoute; pendingRoute = null; setRoute(route.path, route.geometry); }
 			resolve();
 		});
 		});
@@ -210,8 +232,13 @@ const mapView = (() => {
 	function setRemoteMode(mode) {
 		remoteMode = mode;
 		if (!remoteMap) return;
-		if (remoteMap.getLayer("bogota-buildings-3d")) remoteMap.setLayoutProperty("bogota-buildings-3d", "visibility", mode === "3d" ? "visible" : "none");
-		remoteMap.easeTo({ center: [-74.08, 4.65], zoom: mode === "3d" ? 14 : 11.3, pitch: mode === "3d" ? 45 : 0, bearing: mode === "3d" ? -20 : 0, duration: 650, essential: true });
+		const is3d = mode === "3d";
+		clearTimeout(buildingsTimer);
+		const ratio = pixelRatioFor(mode);
+		if (typeof remoteMap.setPixelRatio === "function" && remoteMap.getPixelRatio?.() !== ratio) remoteMap.setPixelRatio(ratio);
+		if (is3d) setBuildingsVisible(true); // una sola vez, al entrar en 3D
+		else buildingsTimer = setTimeout(() => { if (remoteMode === "2d") setBuildingsVisible(false); }, 700); // al terminar de aplanar
+		remoteMap.easeTo({ center: [-74.08, 4.65], zoom: is3d ? 14 : 11.3, pitch: is3d ? 45 : 0, bearing: is3d ? -20 : 0, duration: 650, essential: true });
 	}
 	function isRemote() { return Boolean(remoteMap); }
 	function getMode() { return remoteMode; }

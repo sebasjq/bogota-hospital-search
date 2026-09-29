@@ -4,13 +4,48 @@
  * 
  * Funciona mejor en navegadores basados en Chromium.
  * Incluye fallback automático con blur simple para otros navegadores.
+ *
+ * Optimización de rendimiento (mismo aspecto, menos trabajo):
+ *  - Un solo render por elemento: los atributos que llegan juntos al crearlo se agrupan
+ *    (antes cada atributo observado reconstruía el shadow DOM y regeneraba el filtro).
+ *  - El shadow DOM solo se reconstruye si cambia algo estructural; el resto son cambios de estilo.
+ *  - Los estilos solo se escriben cuando cambian, y ya no se quita/pone el filtro para medir.
+ *  - Sin bucle de requestAnimationFrame para elementos ocultos (tamaño 0): ResizeObserver avisa
+ *    cuando vuelven a tener tamaño.
+ *  - Los cambios de tamaño (p. ej. tarjetas que se expanden animadas) regeneran el filtro como
+ *    máximo cada RESIZE_INTERVAL ms, con una última actualización exacta al terminar.
+ *  - Mientras el mapa se mueve (clase .is-map-moving en <html>) el fondo cambia en cada frame;
+ *    en ese lapso se usa una sola pasada de desplazamiento en lugar de tres (sin franja RGB) y se
+ *    restaura el efecto completo poco después de que el mapa se detiene.
+ *  - Se limpian observers y listeners al quitar el elemento del DOM.
  */
 
 class GlassElement extends HTMLElement {
+    static RESIZE_INTERVAL = 100;   // ms mínimos entre regeneraciones del filtro al cambiar de tamaño
+    static LITE_ENTER_DELAY = 80;   // el mapa debe moverse este tiempo antes de bajar la calidad
+    static LITE_EXIT_DELAY = 220;   // espera tras detenerse el mapa antes de restaurar el efecto completo
+    static _instances = new Set();
+    static _lite = false;
+    static _qualityReady = false;
+
     constructor() {
         super();
         this.clicked = false;
         this.attachShadow({ mode: 'open' });
+
+        this._glassBox = null;
+        this._templateKey = null;
+        this._renderQueued = false;
+        this._frame = 0;
+        this._resizeTimer = 0;
+        this._lastApply = 0;
+        this._applied = {};
+        this._resizeObserver = null;
+        this._release = () => {
+            if (!this.clicked) return;
+            this.clicked = false;
+            this.updateStyles();
+        };
         
         // Detectar soporte de filtros SVG en backdrop-filter (solo una vez por clase)
         if (GlassElement._svgFilterSupport === undefined) {
@@ -84,43 +119,80 @@ class GlassElement extends HTMLElement {
         ];
     }
 
-    connectedCallback() {
-        this.render();
-        this.setupEventListeners();
-        this.setupResponsive();
-        
-        // Observer para auto-size
-        if (this.autoSize) {
-            this.setupAutoSizeObserver();
-        }
+    /* ---------- Calidad adaptativa mientras el mapa se mueve ---------- */
+
+    static _initQuality() {
+        if (GlassElement._qualityReady) return;
+        GlassElement._qualityReady = true;
+
+        const root = document.documentElement;
+        let timer = 0;
+
+        const evaluate = () => {
+            const moving = root.classList.contains('is-map-moving');
+            clearTimeout(timer);
+            timer = 0;
+            if (moving === GlassElement._lite) return;
+            timer = setTimeout(() => {
+                timer = 0;
+                GlassElement._lite = moving;
+                GlassElement._instances.forEach(glass => glass.updateStyles());
+            }, moving ? GlassElement.LITE_ENTER_DELAY : GlassElement.LITE_EXIT_DELAY);
+        };
+
+        new MutationObserver(evaluate).observe(root, { attributes: true, attributeFilter: ['class'] });
+        evaluate();
     }
 
-    setupAutoSizeObserver() {
-        // Observer para cambios en el contenido
-        const observer = new MutationObserver(() => {
-            this.scheduleStyleUpdate();
-        });
-        
-        observer.observe(this, { 
-            childList: true, 
-            subtree: true, 
-            characterData: true 
-        });
+    /* ---------- Ciclo de vida ---------- */
 
-        // ResizeObserver para cambios de tamaño
-        if (window.ResizeObserver) {
-            const resizeObserver = new ResizeObserver(() => {
-                this.scheduleStyleUpdate();
-            });
-            resizeObserver.observe(this.shadowRoot.querySelector('.glass-box'));
+    connectedCallback() {
+        GlassElement._instances.add(this);
+        GlassElement._initQuality();
+        this._queueRender();
+        this.setupResponsive();
+    }
+
+    disconnectedCallback() {
+        GlassElement._instances.delete(this);
+        cancelAnimationFrame(this._frame);
+        clearTimeout(this._resizeTimer);
+        this._frame = 0;
+        this._resizeTimer = 0;
+        if (this._resizeObserver) {
+            this._resizeObserver.disconnect();
+            this._resizeObserver = null;
         }
+        document.removeEventListener('mouseup', this._release);
+        if (this._onWindowResize) {
+            window.removeEventListener('resize', this._onWindowResize);
+            this._onWindowResize = null;
+        }
+        // Al reconectarse se reconstruye y se vuelve a observar
+        this._templateKey = null;
+    }
+
+    /* Agrupa todos los cambios de atributos de un mismo momento en un único render */
+    _queueRender() {
+        if (this._renderQueued) return;
+        this._renderQueued = true;
+        queueMicrotask(() => {
+            this._renderQueued = false;
+            if (this.isConnected) this.render();
+        });
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (oldValue === newValue) return;
+        this._queueRender();
     }
 
     setupResponsive() {
         // Configurar responsive si está habilitado
-        if (this.hasAttribute('responsive')) {
+        if (this.hasAttribute('responsive') && !this._onWindowResize) {
             this.updateResponsiveSize();
-            window.addEventListener('resize', () => this.updateResponsiveSize());
+            this._onWindowResize = () => this.updateResponsiveSize();
+            window.addEventListener('resize', this._onWindowResize);
         }
     }
 
@@ -146,12 +218,6 @@ class GlassElement extends HTMLElement {
         if (newWidth !== this.width || newHeight !== this.height) {
             this.setAttribute('width', newWidth);
             this.setAttribute('height', newHeight);
-        }
-    }
-
-    attributeChangedCallback() {
-        if (this.shadowRoot) {
-            this.render();
         }
     }
 
@@ -214,149 +280,140 @@ class GlassElement extends HTMLElement {
         return this.baseDepth / (this.clicked ? 0.7 : 1);
     }
 
-    setupEventListeners() {
-        const glassBox = this.shadowRoot.querySelector('.glass-box');
+    /* ---------- Eventos ---------- */
 
-		if (this.hasAttribute('disable-click-animation')) {
-			return;
-		}
+    setupEventListeners() {
+        const glassBox = this._glassBox;
+
+        if (!glassBox || this.hasAttribute('disable-click-animation')) {
+            return;
+        }
         
         glassBox.addEventListener('mousedown', () => {
             this.clicked = true;
             this.updateStyles();
+            // Evita perder el mouseup si se suelta fuera; el listener se retira solo
+            document.addEventListener('mouseup', this._release, { once: true });
         });
 
-        glassBox.addEventListener('mouseup', () => {
-            this.clicked = false;
-            this.updateStyles();
-        });
-
-        glassBox.addEventListener('mouseleave', () => {
-            this.clicked = false;
-            this.updateStyles();
-        });
-
-        // Prevenir que el evento mouseup se pierda
-        document.addEventListener('mouseup', () => {
-            if (this.clicked) {
-                this.clicked = false;
-                this.updateStyles();
-            }
-        });
+        glassBox.addEventListener('mouseup', this._release);
+        glassBox.addEventListener('mouseleave', this._release);
     }
 
+    setupAutoSizeObserver() {
+        if (this._resizeObserver) {
+            this._resizeObserver.disconnect();
+            this._resizeObserver = null;
+        }
+        if (!window.ResizeObserver || !this._glassBox) return;
+
+        // El filtro solo depende del tamaño: no hace falta observar cambios de contenido
+        this._resizeObserver = new ResizeObserver(() => this._onResize());
+        this._resizeObserver.observe(this._glassBox);
+    }
+
+    _onResize() {
+        const wait = GlassElement.RESIZE_INTERVAL - (performance.now() - this._lastApply);
+        if (wait <= 0) {
+            this.scheduleStyleUpdate();
+            return;
+        }
+        if (this._resizeTimer) return;
+        this._resizeTimer = setTimeout(() => {
+            this._resizeTimer = 0;
+            this.scheduleStyleUpdate();
+        }, wait);
+    }
+
+    /* ---------- Estilos ---------- */
+
     updateStyles() {
-        const glassBox = this.shadowRoot.querySelector('.glass-box');
-        if (glassBox) {
-            this.applyDynamicStyles(glassBox);
+        if (this._glassBox) {
+            this.applyDynamicStyles(this._glassBox);
         }
     }
 
     scheduleStyleUpdate() {
-        if (this.styleUpdateFrame) return;
-        this.styleUpdateFrame = requestAnimationFrame(() => {
-            this.styleUpdateFrame = undefined;
+        if (this._frame) return;
+        this._frame = requestAnimationFrame(() => {
+            this._frame = 0;
             this.updateStyles();
         });
     }
 
-    applyDynamicStyles(element) {
-        const { getDisplacementFilter, getDisplacementMap } = window.DisplacementUtils;
-
-        // Estilos base que siempre se aplican
-        element.style.borderRadius = `${this.radius}px`;
-
-        if (this.autoSize) {
-            // Auto-size: obtener dimensiones del contenido de manera más precisa
-            
-            // Primero, asegurar que no hay filtros interfiriendo
-            element.style.backdropFilter = 'none';
-            element.style.background = 'rgba(255, 255, 255, 0.4)';
-            
-            // Leer las dimensiones una sola vez antes de aplicar el filtro.
-            const rect = element.getBoundingClientRect();
-            let actualWidth = Math.ceil(rect.width);
-            let actualHeight = Math.ceil(rect.height);
-            
-            // Si las dimensiones son 0, esperar al siguiente frame
-            if (actualWidth === 0 || actualHeight === 0) {
-                requestAnimationFrame(() => this.updateStyles());
-                return;
-            }
-            
-            // Aplicar tamaños mínimos si están especificados
-            actualWidth = Math.max(actualWidth, this.minWidth);
-            actualHeight = Math.max(actualHeight, this.minHeight);
-            
-            // Asegurar tamaños mínimos razonables para el filtro SVG
-            actualWidth = Math.max(actualWidth, 50);
-            actualHeight = Math.max(actualHeight, 30);
-
-            if (this.debug) {
-                element.style.background = `url("${getDisplacementMap({
-                    height: actualHeight,
-                    width: actualWidth,
-                    radius: this.radius,
-                    depth: this.depth
-                })}")`;
-                element.style.boxShadow = "none";
-                element.style.backdropFilter = "none";
-            } else if (this.performanceMode || !this.hasSVGFilterSupport) {
-                // Fallback para navegadores sin soporte
-                element.style.backdropFilter = `blur(${this.performanceMode ? this.blur : this.blur * 2}px) saturate(130%)`;
-                element.style.background = this.backgroundColor;
-                element.style.boxShadow = '1px 1px 1px 0px rgba(255,255,255, 0.60) inset, -1px -1px 1px 0px rgba(255,255,255, 0.60) inset, 0px 0px 16px 0px rgba(0,0,0, 0.04)';
-                element.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-            } else {
-                // Efecto completo con SVG filters
-                element.style.backdropFilter = `blur(${this.blur / 2}px) url('${getDisplacementFilter({
-                    height: actualHeight,
-                    width: actualWidth,
-                    radius: this.radius,
-                    depth: this.depth,
-                    strength: this.strength,
-                    chromaticAberration: this.chromaticAberration
-                })}') blur(${this.blur}px) brightness(1.1) saturate(1.5)`;
-                element.style.background = this.backgroundColor;
-                element.style.boxShadow = '1px 1px 1px 0px rgba(255,255,255, 0.60) inset, -1px -1px 1px 0px rgba(255,255,255, 0.60) inset, 0px 0px 16px 0px rgba(0,0,0, 0.04)';
-            }
-        } else {
-            // Fixed size: usar dimensiones específicas
-            element.style.height = `${this.height}px`;
-            element.style.width = `${this.width}px`;
-
-            if (this.debug) {
-                element.style.background = `url("${getDisplacementMap({
-                    height: this.height,
-                    width: this.width,
-                    radius: this.radius,
-                    depth: this.depth
-                })}")`;
-                element.style.boxShadow = "none";
-                element.style.backdropFilter = "none";
-            } else if (this.performanceMode || !this.hasSVGFilterSupport) {
-                // Fallback para navegadores sin soporte
-                element.style.backdropFilter = `blur(${this.performanceMode ? this.blur : this.blur * 2}px) saturate(130%)`;
-                element.style.background = this.backgroundColor;
-                element.style.boxShadow = '1px 1px 1px 0px rgba(255,255,255, 0.60) inset, -1px -1px 1px 0px rgba(255,255,255, 0.60) inset, 0px 0px 16px 0px rgba(0,0,0, 0.04)';
-                element.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-            } else {
-                // Efecto completo con SVG filters
-                element.style.backdropFilter = `blur(${this.blur / 2}px) url('${getDisplacementFilter({
-                    height: this.height,
-                    width: this.width,
-                    radius: this.radius,
-                    depth: this.depth,
-                    strength: this.strength,
-                    chromaticAberration: this.chromaticAberration
-                })}') blur(${this.blur}px) brightness(1.1) saturate(1.5)`;
-                element.style.background = this.backgroundColor;
-                element.style.boxShadow = '1px 1px 1px 0px rgba(255,255,255, 0.60) inset, -1px -1px 1px 0px rgba(255,255,255, 0.60) inset, 0px 0px 16px 0px rgba(0,0,0, 0.04)';
-            }
+    /* Escribe solo las propiedades que realmente cambiaron (evita invalidar el backdrop-filter) */
+    _assign(element, styles) {
+        for (const prop in styles) {
+            if (this._applied[prop] === styles[prop]) continue;
+            element.style[prop] = styles[prop];
+            this._applied[prop] = styles[prop];
         }
     }
 
-    render() {
+    applyDynamicStyles(element) {
+        const { getDisplacementFilter, getDisplacementMap } = window.DisplacementUtils;
+        const styles = { borderRadius: `${this.radius}px` };
+        let width;
+        let height;
+
+        if (this.autoSize) {
+            // Tamaño de layout (no se altera por transform, p. ej. la animación de los avisos).
+            // Si es 0 (elemento oculto) no se reintenta: ResizeObserver avisará cuando tenga tamaño.
+            width = element.offsetWidth;
+            height = element.offsetHeight;
+            if (!width || !height) return;
+
+            // Aplicar tamaños mínimos si están especificados
+            width = Math.max(width, this.minWidth);
+            height = Math.max(height, this.minHeight);
+
+            // Asegurar tamaños mínimos razonables para el filtro SVG
+            width = Math.max(width, 50);
+            height = Math.max(height, 30);
+        } else {
+            // Fixed size: usar dimensiones específicas
+            width = this.width;
+            height = this.height;
+            styles.height = `${height}px`;
+            styles.width = `${width}px`;
+        }
+
+        this._lastApply = performance.now();
+
+        const insetShadow = '1px 1px 1px 0px rgba(255,255,255, 0.60) inset, -1px -1px 1px 0px rgba(255,255,255, 0.60) inset, 0px 0px 16px 0px rgba(0,0,0, 0.04)';
+
+        if (this.debug) {
+            styles.background = `url("${getDisplacementMap({ height, width, radius: this.radius, depth: this.depth })}")`;
+            styles.boxShadow = 'none';
+            styles.backdropFilter = 'none';
+        } else if (this.performanceMode || !this.hasSVGFilterSupport) {
+            // Fallback para navegadores sin soporte
+            styles.backdropFilter = `blur(${this.performanceMode ? this.blur : this.blur * 2}px) saturate(130%)`;
+            styles.background = this.backgroundColor;
+            styles.boxShadow = insetShadow;
+            styles.border = '1px solid rgba(255, 255, 255, 0.3)';
+        } else {
+            // Efecto completo con SVG filters (una sola pasada mientras el mapa se mueve)
+            const filterUrl = getDisplacementFilter({
+                height,
+                width,
+                radius: this.radius,
+                depth: this.depth,
+                strength: this.strength,
+                chromaticAberration: this.chromaticAberration,
+                lite: GlassElement._lite
+            });
+            styles.backdropFilter = `blur(${this.blur / 2}px) url('${filterUrl}') blur(${this.blur}px) brightness(1.1) saturate(1.5)`;
+            styles.background = this.backgroundColor;
+            styles.boxShadow = insetShadow;
+        }
+
+        this._assign(element, styles);
+    }
+
+    /* ---------- Render ---------- */
+
+    _buildShadow() {
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -414,20 +471,33 @@ class GlassElement extends HTMLElement {
             </div>
         `;
 
-        // Aplicar estilos dinámicos después del render
-        const glassBox = this.shadowRoot.querySelector('.glass-box');
-        
-        // Si es auto-size, esperar a que el contenido se renderice completamente
+        this._glassBox = this.shadowRoot.querySelector('.glass-box');
+        this._applied = {};
+        this.setupEventListeners();
         if (this.autoSize) {
-            // Usar doble requestAnimationFrame para asegurar que el layout esté completo
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    this.applyDynamicStyles(glassBox);
-                });
-            });
-        } else {
-            this.applyDynamicStyles(glassBox);
+            this.setupAutoSizeObserver();
+        } else if (this._resizeObserver) {
+            this._resizeObserver.disconnect();
+            this._resizeObserver = null;
         }
+    }
+
+    render() {
+        // Solo se reconstruye el shadow DOM si cambió algo que forma parte de su estructura/CSS
+        const templateKey = [
+            this.autoSize,
+            this.hasAttribute('disable-click-animation'),
+            this.minWidth,
+            this.minHeight
+        ].join('|');
+
+        if (templateKey !== this._templateKey) {
+            this._buildShadow();
+            this._templateKey = templateKey;
+        }
+
+        // Un único frame: el layout ya está resuelto y ResizeObserver corrige cambios posteriores
+        this.scheduleStyleUpdate();
     }
 }
 
